@@ -220,6 +220,10 @@ try {
 		manifestPaths.includes("extensions/foo/index.js"),
 		"allowlist extension file should enter manifest",
 	);
+	assert(
+		manifestPaths.includes("scripts/pi-idea"),
+		"allowlist script file should enter manifest",
+	);
 
 	const allPaths = [...manifestPaths, ...zipEntries].join("\n");
 	assert(
@@ -495,6 +499,7 @@ async function seedSourceAgent(agentDir, externalDir) {
 		{ recursive: true },
 	);
 	await fs.mkdir(path.join(agentDir, "prompts"), { recursive: true });
+	await fs.mkdir(path.join(agentDir, "scripts"), { recursive: true });
 	await fs.mkdir(path.join(agentDir, "npm", "pkg"), { recursive: true });
 	await fs.mkdir(path.join(agentDir, "git", "pkg"), { recursive: true });
 	await fs.mkdir(path.join(agentDir, "sessions"), { recursive: true });
@@ -519,6 +524,10 @@ async function seedSourceAgent(agentDir, externalDir) {
 	await fs.writeFile(
 		path.join(agentDir, "extensions", "foo", "index.js"),
 		"export default {};\n",
+	);
+	await fs.writeFile(
+		path.join(agentDir, "scripts", "pi-idea"),
+		'#!/bin/sh\nexec idea "$@" --wait\n',
 	);
 	await fs.writeFile(
 		path.join(agentDir, "extensions", "foo", "node_modules", "bad", "bad.js"),

@@ -96,7 +96,7 @@ Allowlist files:
 
 Allowlist directories:
 
-- `prompts/`, `skills/`, `extensions/`, `themes/`
+- `prompts/`, `skills/`, `extensions/`, `themes/`, `scripts/`
 
 Always excluded at any depth:
 

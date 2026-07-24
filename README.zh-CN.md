@@ -96,7 +96,7 @@ WebDAV 配置文件位于 Pi 全局配置目录旁边，并且不会被同步：
 
 允许同步的目录：
 
-- `prompts/`、`skills/`、`extensions/`、`themes/`
+- `prompts/`、`skills/`、`extensions/`、`themes/`、`scripts/`
 
 任意层级都会排除：
 
