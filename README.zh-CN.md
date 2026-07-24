@@ -92,7 +92,7 @@ WebDAV 配置文件位于 Pi 全局配置目录旁边，并且不会被同步：
 
 允许同步的文件：
 
-- `settings.json`、`auth.json`、`models.json`、`AGENTS.md`、`SYSTEM.md`、`APPEND_SYSTEM.md`、`keybindings.json`、`mcp.json`
+- `settings.json`、`auth.json`、`models.json`、`AGENTS.md`、`SYSTEM.md`、`APPEND_SYSTEM.md`、`keybindings.json`、`mcp.json`、`zentui.json`
 
 允许同步的目录：
 

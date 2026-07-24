@@ -92,7 +92,7 @@ When `installMissingPackages` is:
 
 Allowlist files:
 
-- `settings.json`, `auth.json`, `models.json`, `AGENTS.md`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `keybindings.json`, `mcp.json`
+- `settings.json`, `auth.json`, `models.json`, `AGENTS.md`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `keybindings.json`, `mcp.json`, `zentui.json`
 
 Allowlist directories:
 

@@ -10,6 +10,7 @@ export const ALLOWLIST_FILES = [
   "APPEND_SYSTEM.md",
   "keybindings.json",
   "mcp.json",
+  "zentui.json",
 ] as const;
 
 export const ALLOWLIST_DIRS = ["prompts", "skills", "extensions", "themes"] as const;
