@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { readConfig } from "./config.js";
 import {
-	ALLOWLIST_DIRS,
-	ALLOWLIST_FILES,
+	createSyncAllowlist,
 	isExcludedRelativePath,
 	relativeToAgent,
 	safeRelativePath,
@@ -45,6 +45,11 @@ export async function collectAgentArchive(
 	agentDir: string,
 ): Promise<CollectedArchive> {
 	const resolvedAgentDir = path.resolve(agentDir);
+	const config = await readConfig(resolvedAgentDir);
+	const allowlist = createSyncAllowlist(
+		config?.extraSyncFiles,
+		config?.extraSyncDirs,
+	);
 	const state: CollectState = {
 		agentDir: resolvedAgentDir,
 		zipEntries: new Map(),
@@ -54,7 +59,7 @@ export async function collectAgentArchive(
 		warnings: [],
 	};
 
-	for (const fileName of ALLOWLIST_FILES) {
+	for (const fileName of allowlist.files) {
 		const absolutePath = path.join(resolvedAgentDir, fileName);
 		if (await exists(absolutePath)) {
 			if (fileName === "settings.json") {
@@ -65,7 +70,7 @@ export async function collectAgentArchive(
 		}
 	}
 
-	for (const dirName of ALLOWLIST_DIRS) {
+	for (const dirName of allowlist.dirs) {
 		const absolutePath = path.join(resolvedAgentDir, dirName);
 		if (await exists(absolutePath)) {
 			await walkAllowlistPath(state, absolutePath);
@@ -97,7 +102,16 @@ async function addRewrittenSettings(
 	state: CollectState,
 	absolutePath: string,
 ): Promise<void> {
-	const rewrite = await rewriteSettingsFile(state.agentDir, absolutePath);
+	const config = await readConfig(state.agentDir);
+	const allowlist = createSyncAllowlist(
+		config?.extraSyncFiles,
+		config?.extraSyncDirs,
+	);
+	const rewrite = await rewriteSettingsFile(
+		state.agentDir,
+		absolutePath,
+		allowlist,
+	);
 	for (const warning of rewrite.warnings) state.warnings.push(warning);
 	state.packageSpecs.push(...rewrite.packageSpecs);
 

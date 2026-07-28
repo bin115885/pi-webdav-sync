@@ -1,14 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { collectAgentArchive } from "./collector.js";
-import { stateDir } from "./config.js";
+import { readConfig, stateDir } from "./config.js";
 import {
-	ALLOWLIST_DIRS,
-	ALLOWLIST_FILES,
+	createSyncAllowlist,
 	isAllowlistedRelativePath,
 	pathInside,
 	safeRelativePath,
 	toPosixPath,
+	type SyncAllowlist,
 } from "./paths.js";
 import {
 	createLatestZip,
@@ -99,7 +99,15 @@ export async function loadBackup(
 		zipSha256?: string;
 	};
 	const zipBytes = await fs.readFile(record.zipPath);
-	return { record, archive: parseArchive(zipBytes, latest.zipSha256) };
+	const config = await readConfig(agentDir);
+	const allowlist = createSyncAllowlist(
+		config?.extraSyncFiles,
+		config?.extraSyncDirs,
+	);
+	return {
+		record,
+		archive: parseArchive(zipBytes, latest.zipSha256, allowlist),
+	};
 }
 
 export async function applyArchiveToAgent(
@@ -107,13 +115,24 @@ export async function applyArchiveToAgent(
 	archive: ParsedArchive,
 ): Promise<ApplySummary> {
 	const resolvedAgentDir = path.resolve(agentDir);
-	await clearAllowlistedTargets(resolvedAgentDir);
+	const config = await readConfig(resolvedAgentDir);
+	const allowlist = createSyncAllowlist(
+		config?.extraSyncFiles,
+		config?.extraSyncDirs,
+	);
+	await clearAllowlistedTargets(resolvedAgentDir, allowlist);
 	let filesWritten = 0;
 	let externalFilesWritten = 0;
 	for (const file of archive.manifest.files) {
 		const bytes = archive.entries.get(`files/${file.path}`);
 		if (!bytes) throw new Error(`Archive missing file: ${file.path}`);
-		await writeAgentFile(resolvedAgentDir, file.path, bytes, file.mode);
+		await writeAgentFile(
+			resolvedAgentDir,
+			file.path,
+			bytes,
+			file.mode,
+			allowlist,
+		);
 		filesWritten += 1;
 	}
 	for (const resource of archive.manifest.externalResources) {
@@ -121,7 +140,13 @@ export async function applyArchiveToAgent(
 			const bytes = archive.entries.get(file.path);
 			if (!bytes)
 				throw new Error(`Archive missing external file: ${file.path}`);
-			await writeAgentFile(resolvedAgentDir, file.path, bytes, file.mode);
+			await writeAgentFile(
+				resolvedAgentDir,
+				file.path,
+				bytes,
+				file.mode,
+				allowlist,
+			);
 			externalFilesWritten += 1;
 		}
 	}
@@ -162,10 +187,13 @@ export function backupsDir(agentDir: string): string {
 	return path.join(stateDir(agentDir), "backups");
 }
 
-async function clearAllowlistedTargets(agentDir: string): Promise<void> {
-	for (const file of ALLOWLIST_FILES)
+async function clearAllowlistedTargets(
+	agentDir: string,
+	allowlist: SyncAllowlist,
+): Promise<void> {
+	for (const file of allowlist.files)
 		await fs.rm(path.join(agentDir, file), { force: true });
-	for (const dir of ALLOWLIST_DIRS)
+	for (const dir of allowlist.dirs)
 		await fs.rm(path.join(agentDir, dir), { recursive: true, force: true });
 	await fs.rm(path.join(agentDir, "external-resources"), {
 		recursive: true,
@@ -177,10 +205,11 @@ async function writeAgentFile(
 	agentDir: string,
 	relativePath: string,
 	bytes: Buffer,
-	mode?: number,
+	mode: number | undefined,
+	allowlist: SyncAllowlist,
 ): Promise<void> {
 	const safeRel = safeRelativePath(relativePath);
-	if (!isAllowlistedRelativePath(safeRel) && !isExternalResourcePath(safeRel))
+	if (!isAllowlistedRelativePath(safeRel, allowlist) && !isExternalResourcePath(safeRel))
 		throw new Error(`Restore path is not allowlisted: ${relativePath}`);
 	const absolutePath = path.resolve(agentDir, safeRel);
 	if (!pathInside(agentDir, absolutePath))

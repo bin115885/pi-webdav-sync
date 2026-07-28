@@ -22,6 +22,11 @@ export const ALLOWLIST_DIRS = [
   "private",
 ] as const;
 
+export type SyncAllowlist = {
+  files: readonly string[];
+  dirs: readonly string[];
+};
+
 const EXCLUDED_DIR_NAMES = new Set([
   "npm",
   "git",
@@ -101,10 +106,23 @@ export function isExcludedRelativePath(relativePath: string, isDirectory = false
   return false;
 }
 
-export function isAllowlistedRelativePath(relativePath: string): boolean {
+export function createSyncAllowlist(
+  extraFiles: readonly string[] = [],
+  extraDirs: readonly string[] = [],
+): SyncAllowlist {
+  return {
+    files: [...new Set([...ALLOWLIST_FILES, ...extraFiles.map(safeRelativePath)])],
+    dirs: [...new Set([...ALLOWLIST_DIRS, ...extraDirs.map(safeRelativePath)])],
+  };
+}
+
+export function isAllowlistedRelativePath(
+  relativePath: string,
+  allowlist = createSyncAllowlist(),
+): boolean {
   const rel = normalizeRelativePath(relativePath);
-  if ((ALLOWLIST_FILES as readonly string[]).includes(rel)) return true;
-  return ALLOWLIST_DIRS.some((dir) => rel === dir || rel.startsWith(`${dir}/`));
+  if (allowlist.files.includes(rel)) return true;
+  return allowlist.dirs.some((dir) => rel === dir || rel.startsWith(`${dir}/`));
 }
 
 export function resolveMaybeRelativePath(value: string, baseDir: string): string {

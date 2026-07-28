@@ -15,7 +15,7 @@ import {
 	type WebdavSyncConfig,
 } from "./config.js";
 import { createLatestIndex, type LatestIndex, shortHash } from "./manifest.js";
-import { getAgentDir } from "./paths.js";
+import { createSyncAllowlist, getAgentDir } from "./paths.js";
 import { missingInstallSpecs } from "./package-specs.js";
 import {
 	createLatestZip,
@@ -185,7 +185,11 @@ async function commandPull(
 	const snapshot = await chooseSnapshot(backend, context.selectSnapshot);
 	const latest = await backend.getJson<LatestIndex>(snapshot.jsonPath);
 	const zipBytes = await backend.getBytes(snapshot.zipPath);
-	const archive = parseArchive(zipBytes, latest.zipSha256);
+	const allowlist = createSyncAllowlist(
+		config.extraSyncFiles,
+		config.extraSyncDirs,
+	);
+	const archive = parseArchive(zipBytes, latest.zipSha256, allowlist);
 	validateLatestMatchesManifest(latest, archive);
 	const diff = await diffArchiveAgainstLocal(agentDir, archive);
 	const packages = missingInstallSpecs(await settingsJsonFromArchive(archive));

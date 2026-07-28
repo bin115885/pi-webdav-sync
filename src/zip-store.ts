@@ -1,8 +1,10 @@
 import { unzipSync, zipSync } from "fflate";
 import {
+	createSyncAllowlist,
 	isAllowlistedRelativePath,
 	isSafeZipPath,
 	safeRelativePath,
+	type SyncAllowlist,
 } from "./paths.js";
 import {
 	createLatestIndex,
@@ -51,6 +53,7 @@ export function listZipEntries(zipBytes: Uint8Array): string[] {
 export function parseArchive(
 	zipBytes: Uint8Array,
 	expectedZipSha256?: string,
+	allowlist: SyncAllowlist = createSyncAllowlist(),
 ): ParsedArchive {
 	if (expectedZipSha256 && sha256Bytes(zipBytes) !== expectedZipSha256) {
 		throw new Error("Downloaded zipSha256 does not match latest.json");
@@ -65,7 +68,10 @@ export function parseArchive(
 	}
 	const manifestBytes = entries.get("manifest.json");
 	if (!manifestBytes) throw new Error("Zip is missing manifest.json");
-	const manifest = validateManifest(JSON.parse(manifestBytes.toString("utf8")));
+	const manifest = validateManifest(
+		JSON.parse(manifestBytes.toString("utf8")),
+		allowlist,
+	);
 	validateArchiveEntries(entries, manifest);
 	return { entries, manifest };
 }
@@ -78,7 +84,10 @@ export function validateZipEntryPath(entryPath: string): string {
 	return safeRelativePath(entryPath);
 }
 
-function validateManifest(value: unknown): SyncManifest {
+function validateManifest(
+	value: unknown,
+	allowlist: SyncAllowlist,
+): SyncManifest {
 	if (!value || typeof value !== "object" || Array.isArray(value))
 		throw new Error("manifest.json must be an object");
 	const manifest = value as SyncManifest;
@@ -91,7 +100,7 @@ function validateManifest(value: unknown): SyncManifest {
 		throw new Error("Invalid manifest entries");
 	for (const file of manifest.files) {
 		const safePath = validateZipEntryPath(file.path);
-		if (!isAllowlistedRelativePath(safePath))
+		if (!isAllowlistedRelativePath(safePath, allowlist))
 			throw new Error(`Manifest file is not allowlisted: ${file.path}`);
 		validateZipEntryPath(`files/${safePath}`);
 	}

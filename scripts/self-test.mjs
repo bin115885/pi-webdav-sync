@@ -180,6 +180,7 @@ try {
 	);
 
 	await seedSourceAgent(sourceAgent, externalDir);
+	await writeTestConfig(sourceAgent);
 
 	const collected = await collectAgentArchive(sourceAgent);
 	const zip = createLatestZip(collected.zipEntries, collected.manifest);
@@ -207,6 +208,10 @@ try {
 	assert(
 		manifestPaths.includes("AGENTS.md"),
 		"allowlist file should enter manifest",
+	);
+	assert(
+		manifestPaths.includes("AGENTS.grok.md"),
+		"configured extra sync file should enter manifest",
 	);
 	assert(
 		manifestPaths.includes("auth.json"),
@@ -481,6 +486,11 @@ try {
 		"restore should recover pre-pull file",
 	);
 	assert.equal(
+		await fs.readFile(path.join(targetAgent, "AGENTS.grok.md"), "utf8"),
+		"old grok\n",
+		"restore should recover configured extra sync file",
+	);
+	assert.equal(
 		await exists(path.join(targetAgent, "extensions", "old", "old.js")),
 		true,
 		"restore should recover pre-pull allowlisted dir",
@@ -513,6 +523,7 @@ async function seedSourceAgent(agentDir, externalDir) {
 	await fs.mkdir(path.join(externalDir, ".git"), { recursive: true });
 
 	await fs.writeFile(path.join(agentDir, "AGENTS.md"), "agent rules\n");
+	await fs.writeFile(path.join(agentDir, "AGENTS.grok.md"), "grok rules\n");
 	await fs.writeFile(
 		path.join(agentDir, "auth.json"),
 		JSON.stringify({ token: "secret" }),
@@ -588,6 +599,7 @@ async function writeTestConfig(agentDir) {
 				username: "user",
 				passwordEnv: "PI_WEBDAV_TEST_PASSWORD",
 				remoteDir: "/pi",
+				extraSyncFiles: ["AGENTS.grok.md"],
 			},
 			null,
 			2,
@@ -599,6 +611,7 @@ async function seedTargetAgent(agentDir) {
 	await fs.mkdir(path.join(agentDir, "extensions", "old"), { recursive: true });
 	await fs.mkdir(path.join(agentDir, "skills", "old"), { recursive: true });
 	await fs.writeFile(path.join(agentDir, "AGENTS.md"), "old target\n");
+	await fs.writeFile(path.join(agentDir, "AGENTS.grok.md"), "old grok\n");
 	await fs.writeFile(
 		path.join(agentDir, "settings.json"),
 		`${JSON.stringify({ packages: [] }, null, 2)}\n`,

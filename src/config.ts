@@ -1,6 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { getAgentDir } from "./paths.js";
+import {
+  getAgentDir,
+  isExcludedRelativePath,
+  safeRelativePath,
+} from "./paths.js";
 
 export type WebdavSyncConfig = {
   backend: "webdav";
@@ -11,6 +15,8 @@ export type WebdavSyncConfig = {
   remoteDir?: string;
   installMissingPackages?: "ask" | "always" | "never";
   backupRetention?: number;
+  extraSyncFiles?: string[];
+  extraSyncDirs?: string[];
 };
 
 export function configDir(agentDir = getAgentDir()): string {
@@ -65,5 +71,23 @@ export function validateConfig(value: unknown): WebdavSyncConfig {
   if (config.backupRetention !== undefined && (!Number.isInteger(config.backupRetention) || config.backupRetention < 0)) {
     throw new Error("backupRetention must be a non-negative integer");
   }
+  config.extraSyncFiles = validateExtraSyncPaths(config.extraSyncFiles, "extraSyncFiles", false);
+  config.extraSyncDirs = validateExtraSyncPaths(config.extraSyncDirs, "extraSyncDirs", true);
   return config;
+}
+
+function validateExtraSyncPaths(
+  value: unknown,
+  key: "extraSyncFiles" | "extraSyncDirs",
+  isDirectory: boolean,
+): string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+    throw new Error(`${key} must be an array of relative paths`);
+  }
+  const paths = [...new Set(value.map((item) => safeRelativePath(item as string)))];
+  if (paths.some((item) => isExcludedRelativePath(item, isDirectory))) {
+    throw new Error(`${key} contains an excluded path`);
+  }
+  return paths;
 }

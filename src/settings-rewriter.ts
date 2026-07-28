@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
+	createSyncAllowlist,
 	externalResourceZipRoot,
 	isAllowlistedRelativePath,
 	pathInside,
@@ -8,6 +9,7 @@ import {
 	resolveMaybeRelativePath,
 	safeRelativePath,
 	toPosixPath,
+	type SyncAllowlist,
 } from "./paths.js";
 import {
 	clonePackageEntryWithSource,
@@ -38,6 +40,7 @@ type RewriteContext = {
 	settingsDir: string;
 	externalReferences: Map<string, ExternalReference>;
 	warnings: string[];
+	allowlist: SyncAllowlist;
 };
 
 const RESOURCE_KEYS = ["extensions", "skills", "prompts", "themes"] as const;
@@ -50,6 +53,7 @@ const LOCAL_ONLY_SETTINGS_KEYS = [
 export async function rewriteSettingsFile(
 	agentDir: string,
 	settingsPath: string,
+	allowlist: SyncAllowlist = createSyncAllowlist(),
 ): Promise<SettingsRewriteResult> {
 	const raw = await fs.readFile(settingsPath);
 	let parsed: unknown;
@@ -72,6 +76,7 @@ export async function rewriteSettingsFile(
 		settingsDir: path.dirname(settingsPath),
 		externalReferences: new Map(),
 		warnings: [],
+		allowlist,
 	};
 	const root = { ...(parsed as Record<string, unknown>) };
 	for (const key of LOCAL_ONLY_SETTINGS_KEYS) delete root[key];
@@ -135,7 +140,7 @@ function rewriteLocalReference(value: string, ctx: RewriteContext): string {
 	const relative = pathInside(ctx.agentDir, resolved)
 		? relativeToAgent(ctx.agentDir, resolved)
 		: undefined;
-	if (relative && isAllowlistedRelativePath(relative)) {
+	if (relative && isAllowlistedRelativePath(relative, ctx.allowlist)) {
 		return value;
 	}
 	if (relative && isExternalResourceRelativePath(relative)) {
