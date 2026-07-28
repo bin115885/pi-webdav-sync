@@ -49,9 +49,9 @@ class MemoryBackend {
 const tempRoot = await fs.mkdtemp(
 	path.join(os.tmpdir(), "pi-webdav-sync-test-"),
 );
-const sourceAgent = path.join(tempRoot, "source-agent");
-const targetAgent = path.join(tempRoot, "target-agent");
-const initAgent = path.join(tempRoot, "init-agent");
+const sourceAgent = path.join(tempRoot, "source-pi", "agent");
+const targetAgent = path.join(tempRoot, "target-pi", "agent");
+const initAgent = path.join(tempRoot, "init-pi", "agent");
 const externalDir = path.join(tempRoot, "external package");
 
 try {
@@ -210,8 +210,12 @@ try {
 		"allowlist file should enter manifest",
 	);
 	assert(
-		manifestPaths.includes("AGENTS.grok.md"),
-		"configured extra sync file should enter manifest",
+		manifestPaths.includes("pi/agent/AGENTS.grok.md"),
+		"configured Pi-root extra sync file should enter manifest",
+	);
+	assert(
+		manifestPaths.includes("pi/web-search.json"),
+		"configured Pi-root web search config should enter manifest",
 	);
 	assert(
 		manifestPaths.includes("auth.json"),
@@ -429,6 +433,14 @@ try {
 	);
 	assert.equal(
 		await fs.readFile(
+			path.join(path.dirname(targetAgent), "web-search.json"),
+			"utf8",
+		),
+		"source web search\n",
+		"pull should restore Pi-root web search config",
+	);
+	assert.equal(
+		await fs.readFile(
 			path.join(targetAgent, "skills", "good", "skill.md"),
 			"utf8",
 		),
@@ -488,7 +500,15 @@ try {
 	assert.equal(
 		await fs.readFile(path.join(targetAgent, "AGENTS.grok.md"), "utf8"),
 		"old grok\n",
-		"restore should recover configured extra sync file",
+		"restore should recover configured Pi-root extra sync file",
+	);
+	assert.equal(
+		await fs.readFile(
+			path.join(path.dirname(targetAgent), "web-search.json"),
+			"utf8",
+		),
+		"old web search\n",
+		"restore should recover Pi-root web search config",
 	);
 	assert.equal(
 		await exists(path.join(targetAgent, "extensions", "old", "old.js")),
@@ -524,6 +544,10 @@ async function seedSourceAgent(agentDir, externalDir) {
 
 	await fs.writeFile(path.join(agentDir, "AGENTS.md"), "agent rules\n");
 	await fs.writeFile(path.join(agentDir, "AGENTS.grok.md"), "grok rules\n");
+	await fs.writeFile(
+		path.join(path.dirname(agentDir), "web-search.json"),
+		"source web search\n",
+	);
 	await fs.writeFile(
 		path.join(agentDir, "auth.json"),
 		JSON.stringify({ token: "secret" }),
@@ -599,7 +623,7 @@ async function writeTestConfig(agentDir) {
 				username: "user",
 				passwordEnv: "PI_WEBDAV_TEST_PASSWORD",
 				remoteDir: "/pi",
-				extraSyncFiles: ["AGENTS.grok.md"],
+				extraSyncFiles: ["agent/AGENTS.grok.md", "web-search.json"],
 			},
 			null,
 			2,
@@ -612,6 +636,10 @@ async function seedTargetAgent(agentDir) {
 	await fs.mkdir(path.join(agentDir, "skills", "old"), { recursive: true });
 	await fs.writeFile(path.join(agentDir, "AGENTS.md"), "old target\n");
 	await fs.writeFile(path.join(agentDir, "AGENTS.grok.md"), "old grok\n");
+	await fs.writeFile(
+		path.join(path.dirname(agentDir), "web-search.json"),
+		"old web search\n",
+	);
 	await fs.writeFile(
 		path.join(agentDir, "settings.json"),
 		`${JSON.stringify({ packages: [] }, null, 2)}\n`,

@@ -5,7 +5,7 @@ import { readConfig, stateDir } from "./config.js";
 import {
 	createSyncAllowlist,
 	isAllowlistedRelativePath,
-	pathInside,
+	resolveSyncPath,
 	safeRelativePath,
 	toPosixPath,
 	type SyncAllowlist,
@@ -191,10 +191,10 @@ async function clearAllowlistedTargets(
 	agentDir: string,
 	allowlist: SyncAllowlist,
 ): Promise<void> {
-	for (const file of allowlist.files)
-		await fs.rm(path.join(agentDir, file), { force: true });
-	for (const dir of allowlist.dirs)
-		await fs.rm(path.join(agentDir, dir), { recursive: true, force: true });
+	for (const file of [...allowlist.files, ...allowlist.legacyFiles])
+		await fs.rm(resolveSyncPath(agentDir, file), { force: true });
+	for (const dir of [...allowlist.dirs, ...allowlist.legacyDirs])
+		await fs.rm(resolveSyncPath(agentDir, dir), { recursive: true, force: true });
 	await fs.rm(path.join(agentDir, "external-resources"), {
 		recursive: true,
 		force: true,
@@ -209,11 +209,12 @@ async function writeAgentFile(
 	allowlist: SyncAllowlist,
 ): Promise<void> {
 	const safeRel = safeRelativePath(relativePath);
-	if (!isAllowlistedRelativePath(safeRel, allowlist) && !isExternalResourcePath(safeRel))
+	if (
+		!isAllowlistedRelativePath(safeRel, allowlist) &&
+		!isExternalResourcePath(safeRel)
+	)
 		throw new Error(`Restore path is not allowlisted: ${relativePath}`);
-	const absolutePath = path.resolve(agentDir, safeRel);
-	if (!pathInside(agentDir, absolutePath))
-		throw new Error(`Unsafe restore path: ${relativePath}`);
+	const absolutePath = resolveSyncPath(agentDir, safeRel);
 	await fs.mkdir(path.dirname(absolutePath), { recursive: true });
 	await fs.writeFile(absolutePath, bytes);
 	if (mode) await fs.chmod(absolutePath, mode & 0o777).catch(() => undefined);

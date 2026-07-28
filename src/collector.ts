@@ -4,7 +4,7 @@ import { readConfig } from "./config.js";
 import {
 	createSyncAllowlist,
 	isExcludedRelativePath,
-	relativeToAgent,
+	resolveSyncPath,
 	safeRelativePath,
 	toPosixPath,
 } from "./paths.js";
@@ -60,7 +60,7 @@ export async function collectAgentArchive(
 	};
 
 	for (const fileName of allowlist.files) {
-		const absolutePath = path.join(resolvedAgentDir, fileName);
+		const absolutePath = resolveSyncPath(resolvedAgentDir, fileName);
 		if (await exists(absolutePath)) {
 			if (fileName === "settings.json") {
 				await addRewrittenSettings(state, absolutePath);
@@ -71,9 +71,9 @@ export async function collectAgentArchive(
 	}
 
 	for (const dirName of allowlist.dirs) {
-		const absolutePath = path.join(resolvedAgentDir, dirName);
+		const absolutePath = resolveSyncPath(resolvedAgentDir, dirName);
 		if (await exists(absolutePath)) {
-			await walkAllowlistPath(state, absolutePath);
+			await walkAllowlistPath(state, absolutePath, dirName);
 		}
 	}
 
@@ -147,9 +147,9 @@ async function addRewrittenSettings(
 async function walkAllowlistPath(
 	state: CollectState,
 	absolutePath: string,
+	relativePath: string,
 ): Promise<void> {
 	const stat = await fs.lstat(absolutePath);
-	const relativePath = relativeToAgent(state.agentDir, absolutePath);
 	if (stat.isSymbolicLink()) {
 		state.warnings.push(`Skipping symlink: ${relativePath}`);
 		return;
@@ -159,7 +159,11 @@ async function walkAllowlistPath(
 		const children = await fs.readdir(absolutePath);
 		children.sort();
 		for (const child of children) {
-			await walkAllowlistPath(state, path.join(absolutePath, child));
+			await walkAllowlistPath(
+				state,
+				path.join(absolutePath, child),
+				path.posix.join(relativePath, child),
+			);
 		}
 		return;
 	}

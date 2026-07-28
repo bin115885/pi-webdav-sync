@@ -25,7 +25,11 @@ export const ALLOWLIST_DIRS = [
 export type SyncAllowlist = {
   files: readonly string[];
   dirs: readonly string[];
+  legacyFiles: readonly string[];
+  legacyDirs: readonly string[];
 };
+
+const PI_ROOT_PREFIX = "pi";
 
 const EXCLUDED_DIR_NAMES = new Set([
   "npm",
@@ -93,6 +97,20 @@ export function relativeToAgent(agentDir: string, absolutePath: string): string 
   return toPosixPath(path.relative(agentDir, absolutePath));
 }
 
+export function resolveSyncPath(agentDir: string, relativePath: string): string {
+  const safeRel = safeRelativePath(relativePath);
+  if (safeRel.startsWith(`${PI_ROOT_PREFIX}/`)) {
+    const piDir = path.dirname(path.resolve(agentDir));
+    const absolutePath = path.resolve(piDir, safeRel.slice(PI_ROOT_PREFIX.length + 1));
+    if (!pathInside(piDir, absolutePath)) throw new Error(`Unsafe Pi sync path: ${relativePath}`);
+    return absolutePath;
+  }
+  const resolvedAgentDir = path.resolve(agentDir);
+  const absolutePath = path.resolve(resolvedAgentDir, safeRel);
+  if (!pathInside(resolvedAgentDir, absolutePath)) throw new Error(`Unsafe agent sync path: ${relativePath}`);
+  return absolutePath;
+}
+
 export function isExcludedRelativePath(relativePath: string, isDirectory = false): boolean {
   const rel = normalizeRelativePath(relativePath);
   if (!rel) return false;
@@ -110,9 +128,13 @@ export function createSyncAllowlist(
   extraFiles: readonly string[] = [],
   extraDirs: readonly string[] = [],
 ): SyncAllowlist {
+  const toPiRootPath = (value: string) =>
+    safeRelativePath(path.posix.join(PI_ROOT_PREFIX, safeRelativePath(value)));
   return {
-    files: [...new Set([...ALLOWLIST_FILES, ...extraFiles.map(safeRelativePath)])],
-    dirs: [...new Set([...ALLOWLIST_DIRS, ...extraDirs.map(safeRelativePath)])],
+    files: [...new Set([...ALLOWLIST_FILES, ...extraFiles.map(toPiRootPath)])],
+    dirs: [...new Set([...ALLOWLIST_DIRS, ...extraDirs.map(toPiRootPath)])],
+    legacyFiles: extraFiles.map(safeRelativePath),
+    legacyDirs: extraDirs.map(safeRelativePath),
   };
 }
 
@@ -121,8 +143,10 @@ export function isAllowlistedRelativePath(
   allowlist = createSyncAllowlist(),
 ): boolean {
   const rel = normalizeRelativePath(relativePath);
-  if (allowlist.files.includes(rel)) return true;
-  return allowlist.dirs.some((dir) => rel === dir || rel.startsWith(`${dir}/`));
+  if (allowlist.files.includes(rel) || allowlist.legacyFiles.includes(rel)) return true;
+  return [...allowlist.dirs, ...allowlist.legacyDirs].some(
+    (dir) => rel === dir || rel.startsWith(`${dir}/`),
+  );
 }
 
 export function resolveMaybeRelativePath(value: string, baseDir: string): string {
