@@ -13,7 +13,14 @@ export const ALLOWLIST_FILES = [
   "zentui.json",
 ] as const;
 
-export const ALLOWLIST_DIRS = ["prompts", "skills", "extensions", "themes", "scripts"] as const;
+export const ALLOWLIST_DIRS = [
+  "prompts",
+  "skills",
+  "extensions",
+  "themes",
+  "scripts",
+  "private",
+] as const;
 
 const EXCLUDED_DIR_NAMES = new Set([
   "npm",
