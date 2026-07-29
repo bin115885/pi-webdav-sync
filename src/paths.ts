@@ -43,7 +43,7 @@ const EXCLUDED_DIR_NAMES = new Set([
   ".git",
 ]);
 
-const EXCLUDED_FILE_NAMES = new Set([".DS_Store", "Thumbs.db", "settings.webdav.json", "runtime.conf"]);
+const EXCLUDED_FILE_NAMES = new Set([".DS_Store", "Thumbs.db", "settings.webdav.json"]);
 
 export function getAgentDir(explicit?: string): string {
   const value = explicit || process.env.PI_CODING_AGENT_DIR || process.env.PI_AGENT_DIR || path.join(os.homedir(), ".pi", "agent");
@@ -117,6 +117,7 @@ export function isExcludedRelativePath(relativePath: string, isDirectory = false
   const parts = rel.split("/").filter(Boolean);
   if (parts.some((part) => EXCLUDED_DIR_NAMES.has(part))) return true;
   const base = parts[parts.length - 1] || "";
+  if (!isDirectory && parts.slice(-2).join("/") === "anysearch/runtime.conf") return true;
   if (!isDirectory && EXCLUDED_FILE_NAMES.has(base)) return true;
   if (!isDirectory && /(^|[.-])log$/i.test(base)) return true;
   if (!isDirectory && /\.log$/i.test(base)) return true;

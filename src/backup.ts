@@ -5,6 +5,7 @@ import { readConfig, stateDir } from "./config.js";
 import {
 	createSyncAllowlist,
 	isAllowlistedRelativePath,
+	isExcludedRelativePath,
 	resolveSyncPath,
 	safeRelativePath,
 	toPosixPath,
@@ -124,6 +125,7 @@ export async function applyArchiveToAgent(
 	let filesWritten = 0;
 	let externalFilesWritten = 0;
 	for (const file of archive.manifest.files) {
+		if (isExcludedRelativePath(file.path)) continue;
 		const bytes = archive.entries.get(`files/${file.path}`);
 		if (!bytes) throw new Error(`Archive missing file: ${file.path}`);
 		await writeAgentFile(
@@ -137,6 +139,7 @@ export async function applyArchiveToAgent(
 	}
 	for (const resource of archive.manifest.externalResources) {
 		for (const file of resource.files) {
+			if (isExcludedRelativePath(file.path)) continue;
 			const bytes = archive.entries.get(file.path);
 			if (!bytes)
 				throw new Error(`Archive missing external file: ${file.path}`);

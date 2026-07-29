@@ -202,10 +202,7 @@ async function walkExternalResource(
 		);
 		return;
 	}
-	const relativeForExclude = toPosixPath(
-		path.relative(path.dirname(path.resolve(absolutePath)), absolutePath),
-	);
-	if (isExcludedRelativePath(relativeForExclude, stat.isDirectory())) return;
+	if (isExcludedRelativePath(zipPath, stat.isDirectory())) return;
 	if (stat.isDirectory()) {
 		const children = await fs.readdir(absolutePath);
 		children.sort();
@@ -218,7 +215,7 @@ async function walkExternalResource(
 		return;
 	}
 	if (stat.isFile()) {
-		if (isExcludedRelativePath(path.basename(absolutePath), false)) return;
+		if (isExcludedRelativePath(zipPath, false)) return;
 		const bytes = await fs.readFile(absolutePath);
 		addZipEntry(state, zipPath, bytes);
 		resource.files.push(fileEntry(zipPath, bytes, stat.mode));

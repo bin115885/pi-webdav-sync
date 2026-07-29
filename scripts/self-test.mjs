@@ -253,7 +253,39 @@ try {
 		"webdav-sync config should be excluded",
 	);
 	assert(!allPaths.includes("pi-crash.log"), "log files should be excluded");
-	assert(!allPaths.includes("runtime.conf"), "runtime config should be excluded");
+	assert(
+		!allPaths.includes("anysearch/runtime.conf"),
+		"AnySearch runtime config should be excluded",
+	);
+	assert(
+		allPaths.includes("other/runtime.conf"),
+		"unrelated runtime config should remain syncable",
+	);
+
+	const legacyAgent = path.join(tempRoot, "legacy-agent");
+	const excludedRuntimePath = "scripts/anysearch/runtime.conf";
+	const includedRuntimePath = "scripts/other/runtime.conf";
+	await applyArchiveToAgent(legacyAgent, {
+		manifest: {
+			...collected.manifest,
+			files: [{ path: excludedRuntimePath }, { path: includedRuntimePath }],
+			externalResources: [],
+		},
+		entries: new Map([
+			[`files/${excludedRuntimePath}`, Buffer.from("excluded\n")],
+			[`files/${includedRuntimePath}`, Buffer.from("included\n")],
+		]),
+	});
+	assert.equal(
+		await exists(path.join(legacyAgent, excludedRuntimePath)),
+		false,
+		"pull should skip old AnySearch runtime config",
+	);
+	assert.equal(
+		await exists(path.join(legacyAgent, includedRuntimePath)),
+		true,
+		"pull should restore unrelated runtime config",
+	);
 
 	assert.equal(
 		collected.manifest.externalResources.length,
@@ -538,6 +570,8 @@ async function seedSourceAgent(agentDir, externalDir) {
 		recursive: true,
 	});
 	await fs.mkdir(path.join(externalDir, "src"), { recursive: true });
+	await fs.mkdir(path.join(externalDir, "anysearch"), { recursive: true });
+	await fs.mkdir(path.join(externalDir, "other"), { recursive: true });
 	await fs.mkdir(path.join(externalDir, "node_modules", "bad"), {
 		recursive: true,
 	});
@@ -583,7 +617,14 @@ async function seedSourceAgent(agentDir, externalDir) {
 		"bad\n",
 	);
 	await fs.writeFile(path.join(agentDir, "pi-crash.log"), "bad\n");
-	await fs.writeFile(path.join(agentDir, "scripts", "runtime.conf"), "bad\n");
+	await fs.writeFile(
+		path.join(externalDir, "anysearch", "runtime.conf"),
+		"excluded\n",
+	);
+	await fs.writeFile(
+		path.join(externalDir, "other", "runtime.conf"),
+		"included\n",
+	);
 	await fs.writeFile(
 		path.join(externalDir, "package.json"),
 		JSON.stringify({ name: "external" }),
