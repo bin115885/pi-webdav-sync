@@ -192,9 +192,14 @@ async function commandPull(
 	const archive = parseArchive(zipBytes, latest.zipSha256, allowlist);
 	validateLatestMatchesManifest(latest, archive);
 	const diff = await diffArchiveAgainstLocal(agentDir, archive);
-	const packages = missingInstallSpecs(await settingsJsonFromArchive(archive));
+	const settings = await settingsJsonFromArchive(archive);
+	const packages = missingInstallSpecs(settings);
 	const backup = await createLocalBackup(agentDir, config.backupRetention ?? 5);
-	const applied = await applyArchiveToAgent(agentDir, archive);
+	const archiveToApply =
+		process.platform === "darwin"
+			? prepareMacPullArchive(archive, settings)
+			: archive;
+	const applied = await applyArchiveToAgent(agentDir, archiveToApply);
 	const shouldInstall = await shouldInstallPackages(
 		packages,
 		config,
@@ -316,6 +321,44 @@ async function settingsJsonFromArchive(
 	if (!bytes) return undefined;
 	return JSON.parse(bytes.toString("utf8"));
 }
+
+const prepareMacPullArchive = (
+	archive: ParsedArchive,
+	settings: unknown,
+): ParsedArchive => {
+	if (!settings || typeof settings !== "object" || Array.isArray(settings))
+		return archive;
+	const root = settings as Record<string, unknown>;
+	const skillResourceIds = new Set<string>();
+	if (Array.isArray(root.skills)) {
+		for (const entry of root.skills) {
+			if (typeof entry !== "string") continue;
+			const id = entry.match(/external-resources\/([^/]+)/)?.[1];
+			if (id) skillResourceIds.add(id);
+		}
+	}
+	const entries = new Map(archive.entries);
+	entries.set(
+		"files/settings.json",
+		Buffer.from(
+			`${JSON.stringify({ ...root, skills: ["~/.cc-switch/skills"] }, null, 2)}\n`,
+			"utf8",
+		),
+	);
+	return {
+		...archive,
+		entries,
+		manifest: {
+			...archive.manifest,
+			files: archive.manifest.files.filter(
+				(file) => file.path !== "skills" && !file.path.startsWith("skills/"),
+			),
+			externalResources: archive.manifest.externalResources.filter(
+				(resource) => !skillResourceIds.has(resource.id),
+			),
+		},
+	};
+};
 
 async function shouldInstallPackages(
 	specs: string[],

@@ -312,6 +312,10 @@ try {
 	const rewrittenSettings = collected.zipEntries
 		.get("files/settings.json")
 		.toString("utf8");
+	const remoteSkillPath = JSON.parse(rewrittenSettings).skills[0].replace(
+		/^\.\//,
+		"",
+	);
 	assert(
 		rewrittenSettings.includes("./external-resources/"),
 		"settings external paths should be rewritten",
@@ -472,14 +476,22 @@ try {
 		"source web search\n",
 		"pull should restore Pi-root web search config",
 	);
-	assert.equal(
-		await fs.readFile(
-			path.join(targetAgent, "skills", "good", "skill.md"),
-			"utf8",
-		),
-		"skill\n",
-		"pull should restore skill",
-	);
+	if (process.platform === "darwin") {
+		assert.equal(
+			await exists(path.join(targetAgent, "skills", "good", "skill.md")),
+			false,
+			"macOS pull should skip agent skills",
+		);
+	} else {
+		assert.equal(
+			await fs.readFile(
+				path.join(targetAgent, "skills", "good", "skill.md"),
+				"utf8",
+			),
+			"skill\n",
+			"pull should restore skill",
+		);
+	}
 	assert.equal(
 		await exists(path.join(targetAgent, "old-only.txt")),
 		true,
@@ -495,15 +507,28 @@ try {
 		true,
 		"pull should restore external resources",
 	);
-	const backupAfterPull = await collectAgentArchive(targetAgent);
-	assert(
-		backupAfterPull.manifest.externalResources.length > 0,
-		"backup collection should preserve restored external-resources references",
-	);
 	const pulledSettings = await fs.readFile(
 		path.join(targetAgent, "settings.json"),
 		"utf8",
 	);
+	if (process.platform === "darwin") {
+		assert.deepEqual(
+			JSON.parse(pulledSettings).skills,
+			["~/.cc-switch/skills"],
+			"macOS pull should keep the cc-switch skills path",
+		);
+		assert.equal(
+			await exists(path.join(targetAgent, remoteSkillPath)),
+			false,
+			"macOS pull should skip remote skills",
+		);
+	} else {
+		const backupAfterPull = await collectAgentArchive(targetAgent);
+		assert(
+			backupAfterPull.manifest.externalResources.length > 0,
+			"backup collection should preserve restored external-resources references",
+		);
+	}
 	assert(
 		pulledSettings.includes("./external-resources/"),
 		"pulled settings should reference restored external resources",
