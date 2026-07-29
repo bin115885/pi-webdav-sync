@@ -43,7 +43,7 @@ const EXCLUDED_DIR_NAMES = new Set([
   ".git",
 ]);
 
-const EXCLUDED_FILE_NAMES = new Set([".DS_Store", "Thumbs.db", "settings.webdav.json"]);
+const EXCLUDED_FILE_NAMES = new Set([".DS_Store", "Thumbs.db", "settings.webdav.json", "runtime.conf"]);
 
 export function getAgentDir(explicit?: string): string {
   const value = explicit || process.env.PI_CODING_AGENT_DIR || process.env.PI_AGENT_DIR || path.join(os.homedir(), ".pi", "agent");

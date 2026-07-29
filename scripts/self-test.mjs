@@ -253,6 +253,7 @@ try {
 		"webdav-sync config should be excluded",
 	);
 	assert(!allPaths.includes("pi-crash.log"), "log files should be excluded");
+	assert(!allPaths.includes("runtime.conf"), "runtime config should be excluded");
 
 	assert.equal(
 		collected.manifest.externalResources.length,
@@ -582,6 +583,7 @@ async function seedSourceAgent(agentDir, externalDir) {
 		"bad\n",
 	);
 	await fs.writeFile(path.join(agentDir, "pi-crash.log"), "bad\n");
+	await fs.writeFile(path.join(agentDir, "scripts", "runtime.conf"), "bad\n");
 	await fs.writeFile(
 		path.join(externalDir, "package.json"),
 		JSON.stringify({ name: "external" }),
