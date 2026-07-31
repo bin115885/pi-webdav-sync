@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { readConfig } from "./config.js";
+import { loadFileModes, selectFileMode } from "./file-modes.js";
 import {
 	createSyncAllowlist,
 	isExcludedRelativePath,
@@ -38,11 +39,14 @@ type CollectState = {
 	manifestFiles: ManifestFileEntry[];
 	externalResources: MutableExternalResource[];
 	packageSpecs: string[];
+	platform: NodeJS.Platform;
+	preservedModes: Map<string, number>;
 	warnings: string[];
 };
 
 export async function collectAgentArchive(
 	agentDir: string,
+	platform: NodeJS.Platform = process.platform,
 ): Promise<CollectedArchive> {
 	const resolvedAgentDir = path.resolve(agentDir);
 	const config = await readConfig(resolvedAgentDir);
@@ -56,6 +60,9 @@ export async function collectAgentArchive(
 		manifestFiles: [],
 		externalResources: [],
 		packageSpecs: [],
+		platform,
+		preservedModes:
+			platform === "win32" ? await loadFileModes(resolvedAgentDir) : new Map(),
 		warnings: [],
 	};
 
@@ -118,7 +125,15 @@ async function addRewrittenSettings(
 	const relativePath = "settings.json";
 	addZipEntry(state, `files/${relativePath}`, rewrite.content);
 	state.manifestFiles.push(
-		fileEntry(relativePath, rewrite.content, await modeOf(absolutePath)),
+		fileEntry(
+			relativePath,
+			rewrite.content,
+			selectFileMode(
+				await modeOf(absolutePath),
+				state.preservedModes.get(relativePath),
+				state.platform,
+			),
+		),
 	);
 
 	for (const reference of rewrite.externalReferences) {
@@ -186,7 +201,17 @@ async function addAllowlistFile(
 	const safeRel = safeRelativePath(relativePath);
 	const bytes = await fs.readFile(absolutePath);
 	addZipEntry(state, `files/${safeRel}`, bytes);
-	state.manifestFiles.push(fileEntry(safeRel, bytes, stat.mode));
+	state.manifestFiles.push(
+		fileEntry(
+			safeRel,
+			bytes,
+			selectFileMode(
+				stat.mode,
+				state.preservedModes.get(safeRel),
+				state.platform,
+			),
+		),
+	);
 }
 
 async function walkExternalResource(
@@ -218,7 +243,17 @@ async function walkExternalResource(
 		if (isExcludedRelativePath(zipPath, false)) return;
 		const bytes = await fs.readFile(absolutePath);
 		addZipEntry(state, zipPath, bytes);
-		resource.files.push(fileEntry(zipPath, bytes, stat.mode));
+		resource.files.push(
+			fileEntry(
+				zipPath,
+				bytes,
+				selectFileMode(
+					stat.mode,
+					state.preservedModes.get(zipPath),
+					state.platform,
+				),
+			),
+		);
 	}
 }
 

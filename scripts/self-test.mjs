@@ -8,6 +8,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distUrl = (relativePath) =>
 	pathToFileURL(path.join(root, "dist/src", relativePath)).href;
 const { collectAgentArchive } = await import(distUrl("collector.js"));
+const { saveFileModes } = await import(distUrl("file-modes.js"));
 const { createManifest } = await import(distUrl("manifest.js"));
 const { isRemotePackageSpec } = await import(distUrl("package-specs.js"));
 const { createLatestZip, listZipEntries, parseArchive } = await import(
@@ -233,6 +234,22 @@ try {
 		manifestPaths.includes("scripts/pi-idea"),
 		"allowlist script file should enter manifest",
 	);
+	const scriptPath = path.join(sourceAgent, "scripts", "pi-idea");
+	const scriptMode = collected.manifest.files.find(
+		(file) => file.path === "scripts/pi-idea",
+	)?.mode;
+	assert.equal(scriptMode & 0o777, 0o751, "source mode should enter manifest");
+	await saveFileModes(sourceAgent, collected.manifest);
+	await fs.chmod(scriptPath, 0o600);
+	const windowsCollected = await collectAgentArchive(sourceAgent, "win32");
+	assert.equal(
+		windowsCollected.manifest.files.find(
+			(file) => file.path === "scripts/pi-idea",
+		)?.mode,
+		0o751,
+		"Windows push should reuse modes saved during pull",
+	);
+	await fs.chmod(scriptPath, 0o751);
 
 	const allPaths = [...manifestPaths, ...zipEntries].join("\n");
 	assert(
@@ -482,6 +499,12 @@ try {
 			false,
 			"macOS pull should skip agent skills",
 		);
+		assert.equal(
+			(await fs.stat(path.join(targetAgent, "scripts", "pi-idea"))).mode &
+				0o777,
+			0o751,
+			"pull should restore manifest file modes",
+		);
 	} else {
 		assert.equal(
 			await fs.readFile(
@@ -624,6 +647,7 @@ async function seedSourceAgent(agentDir, externalDir) {
 		path.join(agentDir, "scripts", "pi-idea"),
 		'#!/bin/sh\nexec idea "$@" --wait\n',
 	);
+	await fs.chmod(path.join(agentDir, "scripts", "pi-idea"), 0o751);
 	await fs.writeFile(
 		path.join(agentDir, "extensions", "foo", "node_modules", "bad", "bad.js"),
 		"bad\n",

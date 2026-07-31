@@ -6,6 +6,7 @@ import {
 	diffArchiveAgainstLocal,
 } from "./backup.js";
 import { collectAgentArchive } from "./collector.js";
+import { saveFileModes } from "./file-modes.js";
 import {
 	configDir,
 	configPath,
@@ -194,6 +195,7 @@ async function commandPull(
 	const diff = await diffArchiveAgainstLocal(agentDir, archive);
 	const settings = await settingsJsonFromArchive(archive);
 	const packages = missingInstallSpecs(settings);
+	if (process.platform === "win32") await saveFileModes(agentDir, archive.manifest);
 	const backup = await createLocalBackup(agentDir, config.backupRetention ?? 5);
 	const archiveToApply =
 		process.platform === "darwin"
