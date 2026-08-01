@@ -100,7 +100,7 @@ WebDAV 配置文件位于 Pi 全局配置目录旁边，并且不会被同步：
 
 任意层级都会排除：
 
-- `npm/`、`git/`、`node_modules/`、`sessions/`、`cache/`、`logs/`、`webdav-sync/`、`.webdav-sync/`、`.git/`
+- `npm/`、`git/`、`node_modules/`、`sessions/`、`cache/`、`logs/`、`webdav-sync/`、`.webdav-sync/`、`local-state/`、`.git/`
 - `settings.webdav.json`
 - 日志文件和临时文件
 - 不跟随符号链接；被跳过的符号链接会记录为 warning

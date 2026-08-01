@@ -8,6 +8,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distUrl = (relativePath) =>
 	pathToFileURL(path.join(root, "dist/src", relativePath)).href;
 const { collectAgentArchive } = await import(distUrl("collector.js"));
+const { isExcludedRelativePath } = await import(distUrl("paths.js"));
 const { saveFileModes } = await import(distUrl("file-modes.js"));
 const { createManifest } = await import(distUrl("manifest.js"));
 const { isRemotePackageSpec } = await import(distUrl("package-specs.js"));
@@ -56,6 +57,7 @@ const initAgent = path.join(tempRoot, "init-pi", "agent");
 const externalDir = path.join(tempRoot, "external package");
 
 try {
+	assert.equal(isExcludedRelativePath("local-state", true), true, "local state should never be synchronized");
 	const initCreated = await runWebdavSyncCommand(["init"], {
 		agentDir: initAgent,
 	});
@@ -238,9 +240,15 @@ try {
 	const scriptMode = collected.manifest.files.find(
 		(file) => file.path === "scripts/pi-idea",
 	)?.mode;
-	assert.equal(scriptMode & 0o777, 0o751, "source mode should enter manifest");
-	await saveFileModes(sourceAgent, collected.manifest);
-	await fs.chmod(scriptPath, 0o600);
+	if (process.platform !== "win32") assert.equal(scriptMode & 0o777, 0o751, "source mode should enter manifest");
+	const modeManifest = process.platform === "win32"
+		? {
+			...collected.manifest,
+			files: collected.manifest.files.map((file) => file.path === "scripts/pi-idea" ? { ...file, mode: 0o751 } : file),
+		}
+		: collected.manifest;
+	await saveFileModes(sourceAgent, modeManifest);
+	if (process.platform !== "win32") await fs.chmod(scriptPath, 0o600);
 	const windowsCollected = await collectAgentArchive(sourceAgent, "win32");
 	assert.equal(
 		windowsCollected.manifest.files.find(
@@ -249,7 +257,7 @@ try {
 		0o751,
 		"Windows push should reuse modes saved during pull",
 	);
-	await fs.chmod(scriptPath, 0o751);
+	if (process.platform !== "win32") await fs.chmod(scriptPath, 0o751);
 
 	const allPaths = [...manifestPaths, ...zipEntries].join("\n");
 	assert(

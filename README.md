@@ -100,7 +100,7 @@ Allowlist directories:
 
 Always excluded at any depth:
 
-- `npm/`, `git/`, `node_modules/`, `sessions/`, `cache/`, `logs/`, `webdav-sync/`, `.webdav-sync/`, `.git/`
+- `npm/`, `git/`, `node_modules/`, `sessions/`, `cache/`, `logs/`, `webdav-sync/`, `.webdav-sync/`, `local-state/`, `.git/`
 - `settings.webdav.json`
 - log files and temporary files
 - symlinks are not followed; they are reported as warnings

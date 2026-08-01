@@ -40,6 +40,7 @@ const EXCLUDED_DIR_NAMES = new Set([
   "logs",
   "webdav-sync",
   ".webdav-sync",
+  "local-state",
   ".git",
 ]);
 
