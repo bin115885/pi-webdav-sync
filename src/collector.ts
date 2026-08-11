@@ -53,6 +53,7 @@ export async function collectAgentArchive(
 	const allowlist = createSyncAllowlist(
 		config?.extraSyncFiles,
 		config?.extraSyncDirs,
+		resolvedAgentDir,
 	);
 	const state: CollectState = {
 		agentDir: resolvedAgentDir,
@@ -113,6 +114,7 @@ async function addRewrittenSettings(
 	const allowlist = createSyncAllowlist(
 		config?.extraSyncFiles,
 		config?.extraSyncDirs,
+		state.agentDir,
 	);
 	const rewrite = await rewriteSettingsFile(
 		state.agentDir,

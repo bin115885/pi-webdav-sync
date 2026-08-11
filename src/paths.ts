@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
@@ -126,18 +127,34 @@ export function isExcludedRelativePath(relativePath: string, isDirectory = false
   return false;
 }
 
+const AGENTS_MODEL_FILE = /^AGENTS\..+\.md$/i;
+
 export function createSyncAllowlist(
   extraFiles: readonly string[] = [],
   extraDirs: readonly string[] = [],
+  agentDir?: string,
 ): SyncAllowlist {
   const toPiRootPath = (value: string) =>
     safeRelativePath(path.posix.join(PI_ROOT_PREFIX, safeRelativePath(value)));
+  // 自动收集 agent 根目录下的 AGENTS.<model>.md（如 AGENTS.grok.md / AGENTS.deepseek.md），
+  // 避免每新增一个模型规则文件都要手动加 extraSyncFiles。
+  const agentsFiles = listAgentModelFiles(agentDir).map((f) =>
+    toPiRootPath(`agent/${f}`),
+  );
   return {
-    files: [...new Set([...ALLOWLIST_FILES, ...extraFiles.map(toPiRootPath)])],
+    files: [...new Set([...ALLOWLIST_FILES, ...extraFiles.map(toPiRootPath), ...agentsFiles])],
     dirs: [...new Set([...ALLOWLIST_DIRS, ...extraDirs.map(toPiRootPath)])],
     legacyFiles: extraFiles.map(safeRelativePath),
     legacyDirs: extraDirs.map(safeRelativePath),
   };
+}
+
+function listAgentModelFiles(agentDir?: string): string[] {
+  try {
+    return fs.readdirSync(agentDir ?? getAgentDir()).filter((f) => AGENTS_MODEL_FILE.test(f));
+  } catch {
+    return [];
+  }
 }
 
 export function isAllowlistedRelativePath(

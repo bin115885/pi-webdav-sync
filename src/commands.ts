@@ -189,6 +189,7 @@ async function commandPull(
 	const allowlist = createSyncAllowlist(
 		config.extraSyncFiles,
 		config.extraSyncDirs,
+		agentDir,
 	);
 	const archive = parseArchive(zipBytes, latest.zipSha256, allowlist);
 	validateLatestMatchesManifest(latest, archive);

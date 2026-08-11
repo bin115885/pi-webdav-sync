@@ -104,6 +104,7 @@ export async function loadBackup(
 	const allowlist = createSyncAllowlist(
 		config?.extraSyncFiles,
 		config?.extraSyncDirs,
+		agentDir,
 	);
 	return {
 		record,
@@ -120,6 +121,7 @@ export async function applyArchiveToAgent(
 	const allowlist = createSyncAllowlist(
 		config?.extraSyncFiles,
 		config?.extraSyncDirs,
+		resolvedAgentDir,
 	);
 	await clearAllowlistedTargets(resolvedAgentDir, allowlist);
 	let filesWritten = 0;
