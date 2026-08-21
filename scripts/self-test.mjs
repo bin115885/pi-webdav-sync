@@ -723,7 +723,7 @@ async function writeTestConfig(agentDir) {
 				username: "user",
 				passwordEnv: "PI_WEBDAV_TEST_PASSWORD",
 				remoteDir: "/pi",
-				extraSyncFiles: ["agent/AGENTS.grok.md", "web-search.json"],
+				extraSyncFiles: ["agent/AGENTS.grok.md"],
 			},
 			null,
 			2,

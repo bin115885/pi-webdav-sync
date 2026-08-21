@@ -93,6 +93,7 @@ When `installMissingPackages` is:
 Allowlist files:
 
 - `settings.json`, `auth.json`, `models.json`, `AGENTS.md`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `keybindings.json`, `mcp.json`, `zentui.json`
+- `~/.pi/web-search.json`
 
 Allowlist directories:
 

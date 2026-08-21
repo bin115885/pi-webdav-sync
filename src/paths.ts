@@ -12,6 +12,7 @@ export const ALLOWLIST_FILES = [
   "keybindings.json",
   "mcp.json",
   "zentui.json",
+  "pi/web-search.json",
 ] as const;
 
 export const ALLOWLIST_DIRS = [
