@@ -213,6 +213,10 @@ try {
 		"allowlist file should enter manifest",
 	);
 	assert(
+		!manifestPaths.includes("settings.webdav.json"),
+		"WebDAV config should not enter manifest",
+	);
+	assert(
 		manifestPaths.includes("pi/agent/AGENTS.grok.md"),
 		"configured Pi-root extra sync file should enter manifest",
 	);
