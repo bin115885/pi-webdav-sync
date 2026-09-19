@@ -303,7 +303,11 @@ function validateLatestMatchesManifest(
 	const mismatches: string[] = [];
 	if (latest.contentSha256 !== expected.contentSha256)
 		mismatches.push("contentSha256");
-	if (latest.fileCount !== expected.fileCount) mismatches.push("fileCount");
+	if (
+		latest.fileCount !==
+		expected.fileCount + archive.ignoredManifestFileCount
+	)
+		mismatches.push("fileCount");
 	if (latest.externalResourceCount !== expected.externalResourceCount)
 		mismatches.push("externalResourceCount");
 	if (

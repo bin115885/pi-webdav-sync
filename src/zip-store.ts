@@ -23,6 +23,7 @@ export type ZipBuildResult = {
 export type ParsedArchive = {
 	entries: Map<string, Buffer>;
 	manifest: SyncManifest;
+	ignoredManifestFileCount: number;
 };
 
 export function createLatestZip(
@@ -78,8 +79,13 @@ export function parseArchive(
 	const files = manifest.files.filter(
 		(file) => file.path !== LEGACY_IGNORED_MANIFEST_FILE,
 	);
+	const ignoredManifestFileCount = manifest.files.length - files.length;
 	entries.delete(`files/${LEGACY_IGNORED_MANIFEST_FILE}`);
-	return { entries, manifest: { ...manifest, files } };
+	return {
+		entries,
+		manifest: { ...manifest, files },
+		ignoredManifestFileCount,
+	};
 }
 
 export function validateZipEntryPath(entryPath: string): string {

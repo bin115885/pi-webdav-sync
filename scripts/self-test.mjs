@@ -449,6 +449,26 @@ try {
 		false,
 		"legacy WebDAV config should be removed from archive entries",
 	);
+	assert.equal(
+		legacyArchive.ignoredManifestFileCount,
+		1,
+		"legacy WebDAV config should count toward source metadata",
+	);
+	const legacyTarget = path.join(tempRoot, "legacy-target-pi", "agent");
+	await fs.mkdir(legacyTarget, { recursive: true });
+	await writeTestConfig(legacyTarget);
+	const legacyBackend = new MemoryBackend();
+	await legacyBackend.putJson("latest.json", legacyZip.latest);
+	await legacyBackend.putBytes("latest.zip", legacyZip.zipBytes);
+	const legacyPull = await runWebdavSyncCommand(["pull"], {
+		agentDir: legacyTarget,
+		backend: legacyBackend,
+	});
+	assert.equal(
+		legacyPull.ok,
+		true,
+		"pull should accept snapshots containing legacy WebDAV config",
+	);
 
 	await writeTestConfig(sourceAgent);
 	const cancelledBackend = new MemoryBackend();
