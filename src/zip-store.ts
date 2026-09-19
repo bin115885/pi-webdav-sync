@@ -13,6 +13,8 @@ import {
 	type SyncManifest,
 } from "./manifest.js";
 
+const LEGACY_IGNORED_MANIFEST_FILE = "settings.webdav.json";
+
 export type ZipBuildResult = {
 	zipBytes: Uint8Array;
 	latest: LatestIndex;
@@ -73,7 +75,11 @@ export function parseArchive(
 		allowlist,
 	);
 	validateArchiveEntries(entries, manifest);
-	return { entries, manifest };
+	const files = manifest.files.filter(
+		(file) => file.path !== LEGACY_IGNORED_MANIFEST_FILE,
+	);
+	entries.delete(`files/${LEGACY_IGNORED_MANIFEST_FILE}`);
+	return { entries, manifest: { ...manifest, files } };
 }
 
 export function validateZipEntryPath(entryPath: string): string {
@@ -100,7 +106,10 @@ function validateManifest(
 		throw new Error("Invalid manifest entries");
 	for (const file of manifest.files) {
 		const safePath = validateZipEntryPath(file.path);
-		if (!isAllowlistedRelativePath(safePath, allowlist))
+		if (
+			!isAllowlistedRelativePath(safePath, allowlist) &&
+			safePath !== LEGACY_IGNORED_MANIFEST_FILE
+		)
 			throw new Error(`Manifest file is not allowlisted: ${file.path}`);
 		validateZipEntryPath(`files/${safePath}`);
 	}

@@ -409,6 +409,46 @@ try {
 		/not allowlisted/,
 		"manifest paths outside allowlist should be rejected",
 	);
+	const legacyManifest = createManifest({
+		files: [
+			{
+				path: "settings.webdav.json",
+				type: "file",
+				size: 2,
+				sha256:
+					"44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+			},
+		],
+		externalResources: [],
+		packageSpecs: [],
+		warnings: [],
+	});
+	const legacyZip = createLatestZip(
+		new Map([
+			["files/settings.webdav.json", Buffer.from("{}")],
+			[
+				"manifest.json",
+				Buffer.from(`${JSON.stringify(legacyManifest, null, 2)}\n`, "utf8"),
+			],
+		]),
+		legacyManifest,
+	);
+	const legacyArchive = parseArchive(
+		legacyZip.zipBytes,
+		legacyZip.latest.zipSha256,
+	);
+	assert.equal(
+		legacyArchive.manifest.files.some(
+			(file) => file.path === "settings.webdav.json",
+		),
+		false,
+		"legacy WebDAV config should be removed from manifest",
+	);
+	assert.equal(
+		legacyArchive.entries.has("files/settings.webdav.json"),
+		false,
+		"legacy WebDAV config should be removed from archive entries",
+	);
 
 	await writeTestConfig(sourceAgent);
 	const cancelledBackend = new MemoryBackend();
