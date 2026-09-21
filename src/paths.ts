@@ -32,7 +32,7 @@ export type SyncAllowlist = {
 };
 
 const PI_ROOT_PREFIX = "pi";
-
+const HOME_ROOT_PREFIX = "home";
 const EXCLUDED_DIR_NAMES = new Set([
   "npm",
   "git",
@@ -102,6 +102,16 @@ export function relativeToAgent(agentDir: string, absolutePath: string): string 
 
 export function resolveSyncPath(agentDir: string, relativePath: string): string {
   const safeRel = safeRelativePath(relativePath);
+  if (safeRel.startsWith(`${HOME_ROOT_PREFIX}/`)) {
+    const resolvedAgentDir = path.resolve(agentDir);
+    const piDir = path.dirname(resolvedAgentDir);
+    const homeDir = path.basename(resolvedAgentDir) === "agent" && path.basename(piDir) === ".pi"
+      ? path.dirname(piDir)
+      : os.homedir();
+    const absolutePath = path.resolve(homeDir, safeRel.slice(HOME_ROOT_PREFIX.length + 1));
+    if (!pathInside(homeDir, absolutePath)) throw new Error(`Unsafe home sync path: ${relativePath}`);
+    return absolutePath;
+  }
   if (safeRel.startsWith(`${PI_ROOT_PREFIX}/`)) {
     const piDir = path.dirname(path.resolve(agentDir));
     const absolutePath = path.resolve(piDir, safeRel.slice(PI_ROOT_PREFIX.length + 1));
@@ -137,14 +147,18 @@ export function createSyncAllowlist(
 ): SyncAllowlist {
   const toPiRootPath = (value: string) =>
     safeRelativePath(path.posix.join(PI_ROOT_PREFIX, safeRelativePath(value)));
+  const toConfiguredPath = (value: string) => {
+    const safePath = safeRelativePath(value);
+    return safePath.startsWith(`${HOME_ROOT_PREFIX}/`) ? safePath : toPiRootPath(safePath);
+  };
   // 自动收集 agent 根目录下的 AGENTS.<model>.md（如 AGENTS.grok.md / AGENTS.deepseek.md），
   // 避免每新增一个模型规则文件都要手动加 extraSyncFiles。
   const agentsFiles = listAgentModelFiles(agentDir).map((f) =>
     toPiRootPath(`agent/${f}`),
   );
   return {
-    files: [...new Set([...ALLOWLIST_FILES, ...extraFiles.map(toPiRootPath), ...agentsFiles])],
-    dirs: [...new Set([...ALLOWLIST_DIRS, ...extraDirs.map(toPiRootPath)])],
+    files: [...new Set([...ALLOWLIST_FILES, ...extraFiles.map(toConfiguredPath), ...agentsFiles])],
+    dirs: [...new Set([...ALLOWLIST_DIRS, ...extraDirs.map(toConfiguredPath)])],
     legacyFiles: extraFiles.map(safeRelativePath),
     legacyDirs: extraDirs.map(safeRelativePath),
   };

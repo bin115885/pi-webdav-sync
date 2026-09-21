@@ -56,7 +56,7 @@ WebDAV 配置文件位于 Pi 全局配置目录旁边，并且不会被同步：
 ~/.pi/agent/.webdav-sync/backups/
 ```
 
-支持字段包括 `remoteBaseUrl`、`username`、`passwordEnv`、`password`（不太安全的兜底方式）、`remoteDir`、`installMissingPackages`、`backupRetention`、`extraSyncFiles` 和 `extraSyncDirs`。额外同步路径相对于 `~/.pi`，并与 `~/.pi/agent` 下的内置白名单合并；同步 agent 目录中的额外文件时使用 `agent/` 前缀，例如 `agent/AGENTS.grok.md`。
+支持字段包括 `remoteBaseUrl`、`username`、`passwordEnv`、`password`（不太安全的兜底方式）、`remoteDir`、`installMissingPackages`、`backupRetention`、`extraSyncFiles` 和 `extraSyncDirs`。额外同步路径相对于 `~/.pi`，并与 `~/.pi/agent` 下的内置白名单合并；同步 agent 目录中的文件使用 `agent/` 前缀，直接同步 `~/` 下的文件使用 `home/` 前缀，例如 `agent/AGENTS.grok.md` 或 `home/.pi-lens/config.json`。
 
 ### 坚果云 WebDAV 示例
 

@@ -56,7 +56,7 @@ Backups and internal state live under hidden local state:
 ~/.pi/agent/.webdav-sync/backups/
 ```
 
-Supported fields include `remoteBaseUrl`, `username`, `passwordEnv`, `password` (less safe fallback), `remoteDir`, `installMissingPackages`, `backupRetention`, `extraSyncFiles`, and `extraSyncDirs`. Extra sync paths are relative to `~/.pi` and merged with the built-in allowlist under `~/.pi/agent`; use the `agent/` prefix for extra files inside the agent directory, for example `agent/AGENTS.grok.md`.
+Supported fields include `remoteBaseUrl`, `username`, `passwordEnv`, `password` (less safe fallback), `remoteDir`, `installMissingPackages`, `backupRetention`, `extraSyncFiles`, and `extraSyncDirs`. Extra sync paths are relative to `~/.pi` and merged with the built-in allowlist under `~/.pi/agent`; use the `agent/` prefix for files inside the agent directory or the `home/` prefix for files directly under `~/`, for example `agent/AGENTS.grok.md` or `home/.pi-lens/config.json`.
 
 ### Jianguoyun / 坚果云 WebDAV example
 
