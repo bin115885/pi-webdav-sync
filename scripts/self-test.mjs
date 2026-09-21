@@ -8,6 +8,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const distUrl = (relativePath) =>
 	pathToFileURL(path.join(root, "dist/src", relativePath)).href;
 const { collectAgentArchive } = await import(distUrl("collector.js"));
+const { validateConfig } = await import(distUrl("config.js"));
 const { isExcludedRelativePath } = await import(distUrl("paths.js"));
 const { saveFileModes } = await import(distUrl("file-modes.js"));
 const { createManifest } = await import(distUrl("manifest.js"));
@@ -68,6 +69,16 @@ try {
 		initConfig.backend,
 		"webdav",
 		"init template should be WebDAV config",
+	);
+	assert.equal(
+		initConfig.remoteDefaultModel,
+		"antigravity/gemini-3.8-flash",
+		"init template should default the remote model",
+	);
+	assert.equal(
+		validateConfig({ backend: "webdav", remoteDefaultModel: "custom/model" }).remoteDefaultModel,
+		"custom/model",
+		"remote default model should be configurable",
 	);
 	assert.equal(
 		initConfig.passwordEnv,
@@ -185,7 +196,13 @@ try {
 	await seedSourceAgent(sourceAgent, externalDir);
 	await writeTestConfig(sourceAgent);
 
+	const sourceSettingsBefore = await fs.readFile(path.join(sourceAgent, "settings.json"));
 	const collected = await collectAgentArchive(sourceAgent);
+	assert.deepEqual(
+		await fs.readFile(path.join(sourceAgent, "settings.json")),
+		sourceSettingsBefore,
+		"push collection should not modify local settings",
+	);
 	const zip = createLatestZip(collected.zipEntries, collected.manifest);
 	const zipEntries = listZipEntries(zip.zipBytes);
 	assert(
@@ -351,6 +368,9 @@ try {
 	const rewrittenSettings = collected.zipEntries
 		.get("files/settings.json")
 		.toString("utf8");
+	const syncedSettings = JSON.parse(rewrittenSettings);
+	assert.equal(syncedSettings.defaultProvider, "antigravity");
+	assert.equal(syncedSettings.defaultModel, "gemini-3.8-flash");
 	const remoteSkillPath = JSON.parse(rewrittenSettings).skills[0].replace(
 		/^\.\//,
 		"",
@@ -802,6 +822,8 @@ async function seedSourceAgent(agentDir, externalDir) {
 		path.join(agentDir, "settings.json"),
 		`${JSON.stringify(
 			{
+				defaultProvider: "local",
+				defaultModel: "local-model",
 				packages: [
 					"npm:pi-web-access",
 					"pi-skills",

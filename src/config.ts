@@ -6,6 +6,7 @@ import {
   safeRelativePath,
 } from "./paths.js";
 
+export const DEFAULT_REMOTE_MODEL = "antigravity/gemini-3.8-flash";
 export type WebdavSyncConfig = {
   backend: "webdav";
   remoteBaseUrl?: string;
@@ -18,6 +19,7 @@ export type WebdavSyncConfig = {
   extraSyncFiles?: string[];
   extraSyncDirs?: string[];
   excludeMcpServers?: string[];
+  remoteDefaultModel?: string;
 };
 
 export function configDir(agentDir = getAgentDir()): string {
@@ -38,6 +40,7 @@ export function defaultConfig(): WebdavSyncConfig {
     remoteDir: "/",
     installMissingPackages: "ask",
     backupRetention: 5,
+    remoteDefaultModel: DEFAULT_REMOTE_MODEL,
   };
 }
 
@@ -63,8 +66,11 @@ export function validateConfig(value: unknown): WebdavSyncConfig {
   const input = value as Record<string, unknown>;
   const config: WebdavSyncConfig = { ...defaultConfig(), ...(input as Partial<WebdavSyncConfig>) };
   if (config.backend !== "webdav") throw new Error("only webdav backend is supported by config schema");
-  for (const key of ["remoteBaseUrl", "username", "passwordEnv", "password", "remoteDir"] as const) {
+  for (const key of ["remoteBaseUrl", "username", "passwordEnv", "password", "remoteDir", "remoteDefaultModel"] as const) {
     if (config[key] !== undefined && typeof config[key] !== "string") throw new Error(`${key} must be a string`);
+  }
+  if (!config.remoteDefaultModel || !/^[^/\s]+\/\S+$/.test(config.remoteDefaultModel)) {
+    throw new Error("remoteDefaultModel must use provider/model format");
   }
   if (!["ask", "always", "never"].includes(config.installMissingPackages || "ask")) {
     throw new Error("installMissingPackages must be ask, always, or never");

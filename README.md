@@ -56,7 +56,7 @@ Backups and internal state live under hidden local state:
 ~/.pi/agent/.webdav-sync/backups/
 ```
 
-Supported fields include `remoteBaseUrl`, `username`, `passwordEnv`, `password` (less safe fallback), `remoteDir`, `installMissingPackages`, `backupRetention`, `extraSyncFiles`, `extraSyncDirs`, and `excludeMcpServers`. Extra sync paths are relative to `~/.pi` and merged with the built-in allowlist under `~/.pi/agent`; use the `agent/` prefix for files inside the agent directory or the `home/` prefix for files directly under `~/`, for example `agent/AGENTS.grok.md` or `home/.pi-lens/config.json`. MCP servers listed in `excludeMcpServers` are omitted from uploaded `mcp.json`, so other machines will not receive them on pull.
+Supported fields include `remoteBaseUrl`, `username`, `passwordEnv`, `password` (less safe fallback), `remoteDir`, `installMissingPackages`, `backupRetention`, `extraSyncFiles`, `extraSyncDirs`, `excludeMcpServers`, and `remoteDefaultModel`. Extra sync paths are relative to `~/.pi` and merged with the built-in allowlist under `~/.pi/agent`; use the `agent/` prefix for files inside the agent directory or the `home/` prefix for files directly under `~/`, for example `agent/AGENTS.grok.md` or `home/.pi-lens/config.json`. MCP servers listed in `excludeMcpServers` are omitted from uploaded `mcp.json`, so other machines will not receive them on pull. `remoteDefaultModel` changes only the uploaded `settings.json` default model and defaults to `antigravity/gemini-3.8-flash`; the local settings file is unchanged.
 
 ### Jianguoyun / 坚果云 WebDAV example
 

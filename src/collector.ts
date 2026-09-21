@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { readConfig } from "./config.js";
+import { DEFAULT_REMOTE_MODEL, readConfig } from "./config.js";
 import { loadFileModes, selectFileMode } from "./file-modes.js";
 import {
 	createSyncAllowlist,
@@ -43,6 +43,7 @@ type CollectState = {
 	platform: NodeJS.Platform;
 	preservedModes: Map<string, number>;
 	excludeMcpServers: string[];
+	remoteDefaultModel: string;
 	warnings: string[];
 };
 
@@ -68,6 +69,7 @@ export async function collectAgentArchive(
 			platform === "win32" ? await loadFileModes(resolvedAgentDir) : new Map(),
 		warnings: [],
 		excludeMcpServers: config?.excludeMcpServers || [],
+		remoteDefaultModel: config?.remoteDefaultModel || DEFAULT_REMOTE_MODEL,
 	};
 
 	for (const fileName of allowlist.files) {
@@ -133,6 +135,7 @@ async function addRewrittenSettings(
 		state.agentDir,
 		absolutePath,
 		allowlist,
+		state.remoteDefaultModel,
 	);
 	for (const warning of rewrite.warnings) state.warnings.push(warning);
 	state.packageSpecs.push(...rewrite.packageSpecs);

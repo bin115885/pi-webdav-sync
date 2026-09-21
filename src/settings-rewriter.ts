@@ -54,6 +54,7 @@ export async function rewriteSettingsFile(
 	agentDir: string,
 	settingsPath: string,
 	allowlist: SyncAllowlist = createSyncAllowlist(),
+	remoteDefaultModel?: string,
 ): Promise<SettingsRewriteResult> {
 	const raw = await fs.readFile(settingsPath);
 	let parsed: unknown;
@@ -81,6 +82,11 @@ export async function rewriteSettingsFile(
 	const root = { ...(parsed as Record<string, unknown>) };
 	for (const key of LOCAL_ONLY_SETTINGS_KEYS) delete root[key];
 
+	if (remoteDefaultModel) {
+		const separator = remoteDefaultModel.indexOf("/");
+		root.defaultProvider = remoteDefaultModel.slice(0, separator);
+		root.defaultModel = remoteDefaultModel.slice(separator + 1);
+	}
 	if (Array.isArray(root.packages)) {
 		root.packages = root.packages.map((entry) =>
 			rewritePackageEntry(entry, ctx),
