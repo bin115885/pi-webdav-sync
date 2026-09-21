@@ -571,8 +571,12 @@ try {
 	const pulledMcp = JSON.parse(await fs.readFile(path.join(targetAgent, "mcp.json"), "utf8"));
 	assert.deepEqual(
 		pulledMcp.mcpServers,
-		{ context7: { command: "npx" } },
-		"pull should not receive excluded MCP servers",
+		{
+			context7: { command: "npx" },
+			"boss-agent": { command: "local-boss" },
+			xiaohongshu: { url: "http://localhost:28060/mcp" },
+		},
+		"pull should preserve local excluded MCP servers",
 	);
 	assert(
 		selectedSnapshot?.startsWith("20"),

@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { collectAgentArchive } from "./collector.js";
 import { readConfig, stateDir } from "./config.js";
+import { preserveExcludedMcpServers } from "./mcp-settings.js";
 import {
 	createSyncAllowlist,
 	isAllowlistedRelativePath,
@@ -118,17 +119,38 @@ export async function applyArchiveToAgent(
 ): Promise<ApplySummary> {
 	const resolvedAgentDir = path.resolve(agentDir);
 	const config = await readConfig(resolvedAgentDir);
+	const excludedMcpServers = config?.excludeMcpServers || [];
 	const allowlist = createSyncAllowlist(
 		config?.extraSyncFiles,
 		config?.extraSyncDirs,
 		resolvedAgentDir,
 	);
+	const remoteMcp = archive.entries.get("files/mcp.json");
+	const localMcp = excludedMcpServers.length
+		? await fs
+				.readFile(path.join(resolvedAgentDir, "mcp.json"))
+				.catch((error: NodeJS.ErrnoException) => {
+					if (error.code === "ENOENT") return undefined;
+					throw error;
+				})
+		: undefined;
+	const mergedMcp =
+		remoteMcp && localMcp
+			? preserveExcludedMcpServers(
+					remoteMcp,
+					localMcp,
+					excludedMcpServers,
+				)
+			: remoteMcp;
 	await clearAllowlistedTargets(resolvedAgentDir, allowlist);
 	let filesWritten = 0;
 	let externalFilesWritten = 0;
 	for (const file of archive.manifest.files) {
 		if (isExcludedRelativePath(file.path)) continue;
-		const bytes = archive.entries.get(`files/${file.path}`);
+		const bytes =
+			file.path === "mcp.json"
+				? mergedMcp
+				: archive.entries.get(`files/${file.path}`);
 		if (!bytes) throw new Error(`Archive missing file: ${file.path}`);
 		await writeAgentFile(
 			resolvedAgentDir,

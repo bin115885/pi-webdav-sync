@@ -12,6 +12,23 @@ export function filterMcpConfigForSync(
 	for (const name of excludedServers) delete servers[name];
 	return serialize({ ...config, mcpServers: servers });
 }
+export function preserveExcludedMcpServers(
+	remoteBytes: Buffer,
+	localBytes: Buffer,
+	excludedServers: readonly string[],
+): Buffer {
+	if (!excludedServers.length) return remoteBytes;
+	const remote = parseMcpConfig(remoteBytes);
+	const local = parseMcpConfig(localBytes);
+	const servers = { ...(remote.mcpServers || {}) };
+	for (const name of excludedServers) {
+		if (local.mcpServers && name in local.mcpServers) {
+			servers[name] = local.mcpServers[name];
+		}
+	}
+	return serialize({ ...remote, mcpServers: servers });
+}
+
 
 function parseMcpConfig(bytes: Buffer): McpConfig {
 	const value = JSON.parse(bytes.toString("utf8")) as unknown;
