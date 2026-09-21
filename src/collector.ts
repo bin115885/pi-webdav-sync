@@ -18,6 +18,7 @@ import {
 	type SyncManifest,
 } from "./manifest.js";
 import { rewriteSettingsFile } from "./settings-rewriter.js";
+import { filterMcpConfigForSync } from "./mcp-settings.js";
 
 export type CollectedArchive = {
 	agentDir: string;
@@ -41,6 +42,7 @@ type CollectState = {
 	packageSpecs: string[];
 	platform: NodeJS.Platform;
 	preservedModes: Map<string, number>;
+	excludeMcpServers: string[];
 	warnings: string[];
 };
 
@@ -65,6 +67,7 @@ export async function collectAgentArchive(
 		preservedModes:
 			platform === "win32" ? await loadFileModes(resolvedAgentDir) : new Map(),
 		warnings: [],
+		excludeMcpServers: config?.excludeMcpServers || [],
 	};
 
 	for (const fileName of allowlist.files) {
@@ -72,6 +75,16 @@ export async function collectAgentArchive(
 		if (await exists(absolutePath)) {
 			if (fileName === "settings.json") {
 				await addRewrittenSettings(state, absolutePath);
+			} else if (fileName === "mcp.json") {
+				await addAllowlistFile(
+					state,
+					absolutePath,
+					fileName,
+					filterMcpConfigForSync(
+						await fs.readFile(absolutePath),
+						state.excludeMcpServers,
+					),
+				);
 			} else {
 				await addAllowlistFile(state, absolutePath, fileName);
 			}
@@ -193,6 +206,7 @@ async function addAllowlistFile(
 	state: CollectState,
 	absolutePath: string,
 	relativePath: string,
+	content?: Buffer,
 ): Promise<void> {
 	const stat = await fs.lstat(absolutePath);
 	if (stat.isSymbolicLink()) {
@@ -201,7 +215,7 @@ async function addAllowlistFile(
 	}
 	if (!stat.isFile() || isExcludedRelativePath(relativePath, false)) return;
 	const safeRel = safeRelativePath(relativePath);
-	const bytes = await fs.readFile(absolutePath);
+	const bytes = content ?? await fs.readFile(absolutePath);
 	addZipEntry(state, `files/${safeRel}`, bytes);
 	state.manifestFiles.push(
 		fileEntry(

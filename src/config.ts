@@ -17,6 +17,7 @@ export type WebdavSyncConfig = {
   backupRetention?: number;
   extraSyncFiles?: string[];
   extraSyncDirs?: string[];
+  excludeMcpServers?: string[];
 };
 
 export function configDir(agentDir = getAgentDir()): string {
@@ -73,6 +74,7 @@ export function validateConfig(value: unknown): WebdavSyncConfig {
   }
   config.extraSyncFiles = validateExtraSyncPaths(config.extraSyncFiles, "extraSyncFiles", false);
   config.extraSyncDirs = validateExtraSyncPaths(config.extraSyncDirs, "extraSyncDirs", true);
+  config.excludeMcpServers = validateStringList(config.excludeMcpServers, "excludeMcpServers");
   return config;
 }
 
@@ -90,4 +92,12 @@ function validateExtraSyncPaths(
     throw new Error(`${key} contains an excluded path`);
   }
   return paths;
+}
+
+function validateStringList(value: unknown, key: string): string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || !item.trim())) {
+    throw new Error(`${key} must be an array of non-empty strings`);
+  }
+  return [...new Set(value.map((item) => (item as string).trim()))];
 }

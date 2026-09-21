@@ -232,6 +232,12 @@ try {
 		manifestPaths.includes("auth.json"),
 		"secret allowlist file should enter manifest",
 	);
+	const syncedMcp = JSON.parse(collected.zipEntries.get("files/mcp.json").toString("utf8"));
+	assert.deepEqual(
+		Object.keys(syncedMcp.mcpServers),
+		["context7"],
+		"excluded MCP servers should not enter the archive",
+	);
 	assert(
 		manifestPaths.includes("skills/good/skill.md"),
 		"allowlist directory file should enter manifest",
@@ -542,6 +548,12 @@ try {
 		},
 	});
 	assert.equal(pull.ok, true, "pull should apply archive");
+	const pulledMcp = JSON.parse(await fs.readFile(path.join(targetAgent, "mcp.json"), "utf8"));
+	assert.deepEqual(
+		pulledMcp.mcpServers,
+		{ context7: { command: "npx" } },
+		"pull should not receive excluded MCP servers",
+	);
 	assert(
 		selectedSnapshot?.startsWith("20"),
 		"pull should expose snapshot choices",
@@ -733,6 +745,10 @@ async function seedSourceAgent(agentDir, externalDir) {
 		JSON.stringify({ token: "secret" }),
 	);
 	await fs.writeFile(
+		path.join(agentDir, "mcp.json"),
+		`${JSON.stringify({ mcpServers: { context7: { command: "npx" }, "boss-agent": { command: "boss-mcp" }, xiaohongshu: { url: "http://localhost:18060/mcp" } } }, null, 2)}\n`,
+	);
+	await fs.writeFile(
 		path.join(agentDir, "skills", "good", "skill.md"),
 		"skill\n",
 	);
@@ -813,6 +829,7 @@ async function writeTestConfig(agentDir) {
 				passwordEnv: "PI_WEBDAV_TEST_PASSWORD",
 				remoteDir: "/pi",
 				extraSyncFiles: ["agent/AGENTS.grok.md", "home/.pi-lens/config.json"],
+				excludeMcpServers: ["boss-agent", "xiaohongshu"],
 			},
 			null,
 			2,
@@ -837,6 +854,10 @@ async function seedTargetAgent(agentDir) {
 	await fs.writeFile(
 		path.join(agentDir, "settings.json"),
 		`${JSON.stringify({ packages: [] }, null, 2)}\n`,
+	);
+	await fs.writeFile(
+		path.join(agentDir, "mcp.json"),
+		`${JSON.stringify({ mcpServers: { "boss-agent": { command: "local-boss" }, xiaohongshu: { url: "http://localhost:28060/mcp" }, localOnly: { command: "local" } } }, null, 2)}\n`,
 	);
 	await fs.writeFile(
 		path.join(agentDir, "extensions", "old", "old.js"),

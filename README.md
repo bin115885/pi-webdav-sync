@@ -56,7 +56,7 @@ Backups and internal state live under hidden local state:
 ~/.pi/agent/.webdav-sync/backups/
 ```
 
-Supported fields include `remoteBaseUrl`, `username`, `passwordEnv`, `password` (less safe fallback), `remoteDir`, `installMissingPackages`, `backupRetention`, `extraSyncFiles`, and `extraSyncDirs`. Extra sync paths are relative to `~/.pi` and merged with the built-in allowlist under `~/.pi/agent`; use the `agent/` prefix for files inside the agent directory or the `home/` prefix for files directly under `~/`, for example `agent/AGENTS.grok.md` or `home/.pi-lens/config.json`.
+Supported fields include `remoteBaseUrl`, `username`, `passwordEnv`, `password` (less safe fallback), `remoteDir`, `installMissingPackages`, `backupRetention`, `extraSyncFiles`, `extraSyncDirs`, and `excludeMcpServers`. Extra sync paths are relative to `~/.pi` and merged with the built-in allowlist under `~/.pi/agent`; use the `agent/` prefix for files inside the agent directory or the `home/` prefix for files directly under `~/`, for example `agent/AGENTS.grok.md` or `home/.pi-lens/config.json`. MCP servers listed in `excludeMcpServers` are omitted from uploaded `mcp.json`, so other machines will not receive them on pull.
 
 ### Jianguoyun / 坚果云 WebDAV example
 
