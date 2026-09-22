@@ -412,6 +412,7 @@ function templateConfig(): WebdavSyncConfig {
 		remoteDir: "/pi-agent-sync",
 		installMissingPackages: "ask",
 		backupRetention: 5,
+		excludeSyncPaths: [],
 	};
 }
 

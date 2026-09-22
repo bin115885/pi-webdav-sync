@@ -5,8 +5,10 @@ import { readConfig, stateDir } from "./config.js";
 import { preserveExcludedMcpServers } from "./mcp-settings.js";
 import {
 	createSyncAllowlist,
+	createSyncExclusions,
 	isAllowlistedRelativePath,
 	isExcludedRelativePath,
+	isSyncPathExcluded,
 	resolveSyncPath,
 	safeRelativePath,
 	toPosixPath,
@@ -125,6 +127,10 @@ export async function applyArchiveToAgent(
 		config?.extraSyncDirs,
 		resolvedAgentDir,
 	);
+	const excludeSyncPaths = createSyncExclusions(
+		config?.excludeSyncPaths,
+		resolvedAgentDir,
+	);
 	const remoteMcp = archive.entries.get("files/mcp.json");
 	const localMcp = excludedMcpServers.length
 		? await fs
@@ -142,11 +148,14 @@ export async function applyArchiveToAgent(
 					excludedMcpServers,
 				)
 			: remoteMcp;
-	await clearAllowlistedTargets(resolvedAgentDir, allowlist);
+	await clearAllowlistedTargets(resolvedAgentDir, allowlist, excludeSyncPaths);
 	let filesWritten = 0;
 	let externalFilesWritten = 0;
 	for (const file of archive.manifest.files) {
-		if (isExcludedRelativePath(file.path)) continue;
+		if (
+			isExcludedRelativePath(file.path) ||
+			isSyncPathExcluded(resolvedAgentDir, file.path, excludeSyncPaths)
+		) continue;
 		const bytes =
 			file.path === "mcp.json"
 				? mergedMcp
@@ -194,9 +203,15 @@ export async function diffArchiveAgainstLocal(
 	archive: ParsedArchive,
 ): Promise<ArchiveDiff> {
 	const local = await collectAgentArchive(agentDir);
+	const config = await readConfig(agentDir);
+	const excludeSyncPaths = createSyncExclusions(config?.excludeSyncPaths, agentDir);
 	const regular = diffHashes(
 		new Map(local.manifest.files.map((file) => [file.path, file.sha256])),
-		new Map(archive.manifest.files.map((file) => [file.path, file.sha256])),
+		new Map(
+			archive.manifest.files
+				.filter((file) => !isSyncPathExcluded(agentDir, file.path, excludeSyncPaths))
+				.map((file) => [file.path, file.sha256]),
+		),
 	);
 	const external = diffHashes(
 		externalResourceHashes(local.manifest.externalResources),
@@ -217,14 +232,41 @@ export function backupsDir(agentDir: string): string {
 async function clearAllowlistedTargets(
 	agentDir: string,
 	allowlist: SyncAllowlist,
+	excludeSyncPaths: readonly string[],
 ): Promise<void> {
 	for (const file of [...allowlist.files, ...allowlist.legacyFiles])
-		await fs.rm(resolveSyncPath(agentDir, file), { force: true });
+		await removeSyncTarget(agentDir, file, excludeSyncPaths);
 	for (const dir of [...allowlist.dirs, ...allowlist.legacyDirs])
-		await fs.rm(resolveSyncPath(agentDir, dir), { recursive: true, force: true });
+		await removeSyncTarget(agentDir, dir, excludeSyncPaths);
 	await fs.rm(path.join(agentDir, "external-resources"), {
 		recursive: true,
 		force: true,
+	});
+}
+
+async function removeSyncTarget(
+	agentDir: string,
+	relativePath: string,
+	excludeSyncPaths: readonly string[],
+): Promise<void> {
+	if (isSyncPathExcluded(agentDir, relativePath, excludeSyncPaths)) return;
+	const absolutePath = resolveSyncPath(agentDir, relativePath);
+	const stat = await fs.lstat(absolutePath).catch((error: NodeJS.ErrnoException) => {
+		if (error.code === "ENOENT") return undefined;
+		throw error;
+	});
+	if (!stat?.isDirectory()) {
+		await fs.rm(absolutePath, { force: true });
+		return;
+	}
+	for (const child of await fs.readdir(absolutePath))
+		await removeSyncTarget(
+			agentDir,
+			path.posix.join(relativePath, child),
+			excludeSyncPaths,
+		);
+	await fs.rmdir(absolutePath).catch((error: NodeJS.ErrnoException) => {
+		if (!["ENOENT", "ENOTEMPTY"].includes(error.code || "")) throw error;
 	});
 }
 

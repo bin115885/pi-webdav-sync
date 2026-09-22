@@ -124,6 +124,29 @@ export function resolveSyncPath(agentDir: string, relativePath: string): string 
   return absolutePath;
 }
 
+export function normalizeConfiguredSyncPath(value: string): string {
+  const safePath = safeRelativePath(value);
+  return safePath.startsWith(`${HOME_ROOT_PREFIX}/`)
+    ? safePath
+    : safeRelativePath(path.posix.join(PI_ROOT_PREFIX, safePath));
+}
+
+export function createSyncExclusions(
+  values: readonly string[] = [],
+  agentDir = getAgentDir(),
+): readonly string[] {
+  return [...new Set(values.map((value) => resolveSyncPath(agentDir, normalizeConfiguredSyncPath(value))))];
+}
+
+export function isSyncPathExcluded(
+  agentDir: string,
+  relativePath: string,
+  exclusions: readonly string[],
+): boolean {
+  const absolutePath = resolveSyncPath(agentDir, relativePath);
+  return exclusions.some((excludedPath) => pathInside(excludedPath, absolutePath));
+}
+
 export function isExcludedRelativePath(relativePath: string, isDirectory = false): boolean {
   const rel = normalizeRelativePath(relativePath);
   if (!rel) return false;
@@ -145,16 +168,11 @@ export function createSyncAllowlist(
   extraDirs: readonly string[] = [],
   agentDir?: string,
 ): SyncAllowlist {
-  const toPiRootPath = (value: string) =>
-    safeRelativePath(path.posix.join(PI_ROOT_PREFIX, safeRelativePath(value)));
-  const toConfiguredPath = (value: string) => {
-    const safePath = safeRelativePath(value);
-    return safePath.startsWith(`${HOME_ROOT_PREFIX}/`) ? safePath : toPiRootPath(safePath);
-  };
+  const toConfiguredPath = normalizeConfiguredSyncPath;
   // 自动收集 agent 根目录下的 AGENTS.<model>.md（如 AGENTS.grok.md / AGENTS.deepseek.md），
   // 避免每新增一个模型规则文件都要手动加 extraSyncFiles。
   const agentsFiles = listAgentModelFiles(agentDir).map((f) =>
-    toPiRootPath(`agent/${f}`),
+    toConfiguredPath(`agent/${f}`),
   );
   return {
     files: [...new Set([...ALLOWLIST_FILES, ...extraFiles.map(toConfiguredPath), ...agentsFiles])],

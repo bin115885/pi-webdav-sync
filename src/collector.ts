@@ -4,7 +4,9 @@ import { DEFAULT_REMOTE_MODEL, readConfig } from "./config.js";
 import { loadFileModes, selectFileMode } from "./file-modes.js";
 import {
 	createSyncAllowlist,
+	createSyncExclusions,
 	isExcludedRelativePath,
+	isSyncPathExcluded,
 	resolveSyncPath,
 	safeRelativePath,
 	toPosixPath,
@@ -42,6 +44,7 @@ type CollectState = {
 	packageSpecs: string[];
 	platform: NodeJS.Platform;
 	preservedModes: Map<string, number>;
+	excludeSyncPaths: readonly string[];
 	excludeMcpServers: string[];
 	remoteDefaultModel: string;
 	warnings: string[];
@@ -68,6 +71,7 @@ export async function collectAgentArchive(
 		preservedModes:
 			platform === "win32" ? await loadFileModes(resolvedAgentDir) : new Map(),
 		warnings: [],
+		excludeSyncPaths: createSyncExclusions(config?.excludeSyncPaths, resolvedAgentDir),
 		excludeMcpServers: config?.excludeMcpServers || [],
 		remoteDefaultModel: config?.remoteDefaultModel || DEFAULT_REMOTE_MODEL,
 	};
@@ -182,6 +186,7 @@ async function walkAllowlistPath(
 	absolutePath: string,
 	relativePath: string,
 ): Promise<void> {
+	if (isSyncPathExcluded(state.agentDir, relativePath, state.excludeSyncPaths)) return;
 	const stat = await fs.lstat(absolutePath);
 	if (stat.isSymbolicLink()) {
 		state.warnings.push(`Skipping symlink: ${relativePath}`);
@@ -211,6 +216,7 @@ async function addAllowlistFile(
 	relativePath: string,
 	content?: Buffer,
 ): Promise<void> {
+	if (isSyncPathExcluded(state.agentDir, relativePath, state.excludeSyncPaths)) return;
 	const stat = await fs.lstat(absolutePath);
 	if (stat.isSymbolicLink()) {
 		state.warnings.push(`Skipping symlink: ${relativePath}`);

@@ -18,6 +18,7 @@ export type WebdavSyncConfig = {
   backupRetention?: number;
   extraSyncFiles?: string[];
   extraSyncDirs?: string[];
+  excludeSyncPaths?: string[];
   excludeMcpServers?: string[];
   remoteDefaultModel?: string;
 };
@@ -80,13 +81,14 @@ export function validateConfig(value: unknown): WebdavSyncConfig {
   }
   config.extraSyncFiles = validateExtraSyncPaths(config.extraSyncFiles, "extraSyncFiles", false);
   config.extraSyncDirs = validateExtraSyncPaths(config.extraSyncDirs, "extraSyncDirs", true);
+  config.excludeSyncPaths = validateExtraSyncPaths(config.excludeSyncPaths, "excludeSyncPaths", false);
   config.excludeMcpServers = validateStringList(config.excludeMcpServers, "excludeMcpServers");
   return config;
 }
 
 function validateExtraSyncPaths(
   value: unknown,
-  key: "extraSyncFiles" | "extraSyncDirs",
+  key: "extraSyncFiles" | "extraSyncDirs" | "excludeSyncPaths",
   isDirectory: boolean,
 ): string[] {
   if (value === undefined) return [];

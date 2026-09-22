@@ -305,6 +305,10 @@ try {
 	);
 	assert(!allPaths.includes("sessions/session"), "sessions should be excluded");
 	assert(
+		!allPaths.includes("private/grok2api-keys.json"),
+		"configured excluded file should not enter archive",
+	);
+	assert(
 		!allPaths.includes(".webdav-sync/config"),
 		"webdav-sync config should be excluded",
 	);
@@ -636,6 +640,11 @@ try {
 		);
 	}
 	assert.equal(
+		await fs.readFile(path.join(targetAgent, "private", "grok2api-keys.json"), "utf8"),
+		'{"local":true}\n',
+		"pull should preserve configured excluded files",
+	);
+	assert.equal(
 		await exists(path.join(targetAgent, "old-only.txt")),
 		true,
 		"non-allowlisted file should not be touched",
@@ -740,6 +749,7 @@ async function seedSourceAgent(agentDir, externalDir) {
 	);
 	await fs.mkdir(path.join(agentDir, "prompts"), { recursive: true });
 	await fs.mkdir(path.join(agentDir, "scripts"), { recursive: true });
+	await fs.mkdir(path.join(agentDir, "private"), { recursive: true });
 	await fs.mkdir(path.join(agentDir, "npm", "pkg"), { recursive: true });
 	await fs.mkdir(path.join(agentDir, "git", "pkg"), { recursive: true });
 	await fs.mkdir(path.join(agentDir, "sessions"), { recursive: true });
@@ -785,6 +795,10 @@ async function seedSourceAgent(agentDir, externalDir) {
 		'#!/bin/sh\nexec idea "$@" --wait\n',
 	);
 	await fs.chmod(path.join(agentDir, "scripts", "pi-idea"), 0o751);
+	await fs.writeFile(
+		path.join(agentDir, "private", "grok2api-keys.json"),
+		'{"secret":true}\n',
+	);
 	await fs.writeFile(
 		path.join(agentDir, "extensions", "foo", "node_modules", "bad", "bad.js"),
 		"bad\n",
@@ -855,6 +869,7 @@ async function writeTestConfig(agentDir) {
 				passwordEnv: "PI_WEBDAV_TEST_PASSWORD",
 				remoteDir: "/pi",
 				extraSyncFiles: ["agent/AGENTS.grok.md", "home/.pi-lens/config.json"],
+				excludeSyncPaths: ["agent/private/grok2api-keys.json"],
 				excludeMcpServers: ["boss-agent", "xiaohongshu"],
 			},
 			null,
@@ -866,6 +881,7 @@ async function writeTestConfig(agentDir) {
 async function seedTargetAgent(agentDir) {
 	await fs.mkdir(path.join(path.dirname(path.dirname(agentDir)), ".pi-lens"), { recursive: true });
 	await fs.mkdir(path.join(agentDir, "extensions", "old"), { recursive: true });
+	await fs.mkdir(path.join(agentDir, "private"), { recursive: true });
 	await fs.mkdir(path.join(agentDir, "skills", "old"), { recursive: true });
 	await fs.writeFile(path.join(agentDir, "AGENTS.md"), "old target\n");
 	await fs.writeFile(path.join(agentDir, "AGENTS.grok.md"), "old grok\n");
@@ -884,6 +900,10 @@ async function seedTargetAgent(agentDir) {
 	await fs.writeFile(
 		path.join(agentDir, "mcp.json"),
 		`${JSON.stringify({ mcpServers: { "boss-agent": { command: "local-boss" }, xiaohongshu: { url: "http://localhost:28060/mcp" }, localOnly: { command: "local" } } }, null, 2)}\n`,
+	);
+	await fs.writeFile(
+		path.join(agentDir, "private", "grok2api-keys.json"),
+		'{"local":true}\n',
 	);
 	await fs.writeFile(
 		path.join(agentDir, "extensions", "old", "old.js"),
