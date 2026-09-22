@@ -92,7 +92,15 @@ export async function rewriteSettingsFile(
 		const separator = modelRef.indexOf("/");
 		root.defaultProvider = modelRef.slice(0, separator);
 		root.defaultModel = modelRef.slice(separator + 1);
-		if (thinkingLevel) root.defaultThinkingLevel = thinkingLevel;
+		if (thinkingLevel) {
+			const levels = root.modelThinkingLevels &&
+				typeof root.modelThinkingLevels === "object" &&
+				!Array.isArray(root.modelThinkingLevels)
+				? { ...(root.modelThinkingLevels as Record<string, unknown>) }
+				: {};
+			levels[root.defaultModel as string] = thinkingLevel;
+			root.modelThinkingLevels = levels;
+		}
 	}
 	if (Array.isArray(root.packages)) {
 		root.packages = root.packages.map((entry) =>

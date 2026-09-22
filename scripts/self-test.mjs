@@ -380,7 +380,8 @@ try {
 	const syncedSettings = JSON.parse(rewrittenSettings);
 	assert.equal(syncedSettings.defaultProvider, "antigravity");
 	assert.equal(syncedSettings.defaultModel, "gemini-3.8-flash");
-	assert.equal(syncedSettings.defaultThinkingLevel, "high");
+	assert.equal(syncedSettings.defaultThinkingLevel, undefined);
+	assert.equal(syncedSettings.modelThinkingLevels["gemini-3.8-flash"], "high");
 	const remoteSkillPath = JSON.parse(rewrittenSettings).skills[0].replace(
 		/^\.\//,
 		"",
