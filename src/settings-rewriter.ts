@@ -83,9 +83,16 @@ export async function rewriteSettingsFile(
 	for (const key of LOCAL_ONLY_SETTINGS_KEYS) delete root[key];
 
 	if (remoteDefaultModel) {
-		const separator = remoteDefaultModel.indexOf("/");
-		root.defaultProvider = remoteDefaultModel.slice(0, separator);
-		root.defaultModel = remoteDefaultModel.slice(separator + 1);
+		const thinkingLevel = remoteDefaultModel.match(
+			/:(off|minimal|low|medium|high|xhigh)$/
+		)?.[1];
+		const modelRef = thinkingLevel
+			? remoteDefaultModel.slice(0, -(thinkingLevel.length + 1))
+			: remoteDefaultModel;
+		const separator = modelRef.indexOf("/");
+		root.defaultProvider = modelRef.slice(0, separator);
+		root.defaultModel = modelRef.slice(separator + 1);
+		if (thinkingLevel) root.defaultThinkingLevel = thinkingLevel;
 	}
 	if (Array.isArray(root.packages)) {
 		root.packages = root.packages.map((entry) =>

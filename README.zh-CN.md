@@ -56,7 +56,7 @@ WebDAV 配置文件位于 Pi 全局配置目录旁边，并且不会被同步：
 ~/.pi/agent/.webdav-sync/backups/
 ```
 
-支持字段包括 `remoteBaseUrl`、`username`、`passwordEnv`、`password`（不太安全的兜底方式）、`remoteDir`、`installMissingPackages`、`backupRetention`、`extraSyncFiles`、`extraSyncDirs`、`excludeSyncPaths`、`excludeMcpServers` 和 `remoteDefaultModel`。额外同步路径和忽略路径均相对于 `~/.pi`；同步 agent 目录中的文件使用 `agent/` 前缀，直接同步 `~/` 下的文件使用 `home/` 前缀，例如 `agent/AGENTS.grok.md` 或 `home/.pi-lens/config.json`。`excludeSyncPaths` 中的路径不会上传，拉取时也会保留本机对应文件。`excludeMcpServers` 中的 MCP 不会上传，因此其他机器拉取后不会获得这些 MCP。`remoteDefaultModel` 仅修改上传副本中 `settings.json` 的默认模型，默认值为 `antigravity/gemini-3.8-flash`，不会修改本机配置。
+支持字段包括 `remoteBaseUrl`、`username`、`passwordEnv`、`password`（不太安全的兜底方式）、`remoteDir`、`installMissingPackages`、`backupRetention`、`extraSyncFiles`、`extraSyncDirs`、`excludeSyncPaths`、`excludeMcpServers` 和 `remoteDefaultModel`。额外同步路径和忽略路径均相对于 `~/.pi`；同步 agent 目录中的文件使用 `agent/` 前缀，直接同步 `~/` 下的文件使用 `home/` 前缀，例如 `agent/AGENTS.grok.md` 或 `home/.pi-lens/config.json`。`excludeSyncPaths` 中的路径不会上传，拉取时也会保留本机对应文件。`excludeMcpServers` 中的 MCP 不会上传，因此其他机器拉取后不会获得这些 MCP。`remoteDefaultModel` 仅修改上传副本中 `settings.json` 的默认模型，默认值为 `antigravity/gemini-3.8-flash`；追加 `:high` 等 Pi 思考强度后缀时还会设置 `defaultThinkingLevel`，不会修改本机配置。
 
 ### 坚果云 WebDAV 示例
 

@@ -81,6 +81,11 @@ try {
 		"remote default model should be configurable",
 	);
 	assert.equal(
+		validateConfig({ backend: "webdav", remoteDefaultModel: "custom/model:high" }).remoteDefaultModel,
+		"custom/model:high",
+		"remote default model should accept a thinking-level suffix",
+	);
+	assert.equal(
 		initConfig.passwordEnv,
 		"PI_WEBDAV_PASSWORD",
 		"init template should prefer passwordEnv",
@@ -375,6 +380,7 @@ try {
 	const syncedSettings = JSON.parse(rewrittenSettings);
 	assert.equal(syncedSettings.defaultProvider, "antigravity");
 	assert.equal(syncedSettings.defaultModel, "gemini-3.8-flash");
+	assert.equal(syncedSettings.defaultThinkingLevel, "high");
 	const remoteSkillPath = JSON.parse(rewrittenSettings).skills[0].replace(
 		/^\.\//,
 		"",
@@ -871,6 +877,7 @@ async function writeTestConfig(agentDir) {
 				extraSyncFiles: ["agent/AGENTS.grok.md", "home/.pi-lens/config.json"],
 				excludeSyncPaths: ["agent/private/grok2api-keys.json"],
 				excludeMcpServers: ["boss-agent", "xiaohongshu"],
+				remoteDefaultModel: "antigravity/gemini-3.8-flash:high",
 			},
 			null,
 			2,
