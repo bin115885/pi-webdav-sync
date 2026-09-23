@@ -9,6 +9,7 @@ const distUrl = (relativePath) =>
 	pathToFileURL(path.join(root, "dist/src", relativePath)).href;
 const { collectAgentArchive } = await import(distUrl("collector.js"));
 const { validateConfig } = await import(distUrl("config.js"));
+const { rewriteSettingsFile } = await import(distUrl("settings-rewriter.js"));
 const { isExcludedRelativePath } = await import(distUrl("paths.js"));
 const { saveFileModes } = await import(distUrl("file-modes.js"));
 const { createManifest } = await import(distUrl("manifest.js"));
@@ -381,7 +382,16 @@ try {
 	assert.equal(syncedSettings.defaultProvider, "antigravity");
 	assert.equal(syncedSettings.defaultModel, "gemini-3.8-flash");
 	assert.equal(syncedSettings.defaultThinkingLevel, undefined);
-	assert.equal(syncedSettings.modelThinkingLevels["gemini-3.8-flash"], "high");
+	assert.equal(syncedSettings.modelThinkingLevels["antigravity/gemini-3.8-flash"], "high");
+	const maxSettings = JSON.parse((await rewriteSettingsFile(
+		sourceAgent,
+		path.join(sourceAgent, "settings.json"),
+		undefined,
+		"cline-pass/cline-pass/deepseek-v4.1-flash:max",
+	)).content.toString("utf8"));
+	assert.equal(maxSettings.defaultProvider, "cline-pass");
+	assert.equal(maxSettings.defaultModel, "cline-pass/deepseek-v4.1-flash");
+	assert.equal(maxSettings.modelThinkingLevels["cline-pass/cline-pass/deepseek-v4.1-flash"], "max");
 	const remoteSkillPath = JSON.parse(rewrittenSettings).skills[0].replace(
 		/^\.\//,
 		"",

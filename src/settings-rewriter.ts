@@ -84,7 +84,7 @@ export async function rewriteSettingsFile(
 
 	if (remoteDefaultModel) {
 		const thinkingLevel = remoteDefaultModel.match(
-			/:(off|minimal|low|medium|high|xhigh)$/
+			/:(off|minimal|low|medium|high|xhigh|max)$/
 		)?.[1];
 		const modelRef = thinkingLevel
 			? remoteDefaultModel.slice(0, -(thinkingLevel.length + 1))
@@ -98,7 +98,7 @@ export async function rewriteSettingsFile(
 				!Array.isArray(root.modelThinkingLevels)
 				? { ...(root.modelThinkingLevels as Record<string, unknown>) }
 				: {};
-			levels[root.defaultModel as string] = thinkingLevel;
+			levels[`${root.defaultProvider}/${root.defaultModel}`] = thinkingLevel;
 			root.modelThinkingLevels = levels;
 		}
 	}
