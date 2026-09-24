@@ -48,7 +48,21 @@ export function defaultConfig(): WebdavSyncConfig {
 export async function readConfig(agentDir = getAgentDir()): Promise<WebdavSyncConfig | undefined> {
   try {
     const raw = await fs.readFile(configPath(agentDir), "utf8");
-    return validateConfig(JSON.parse(raw));
+    const settings = await fs.readFile(path.join(agentDir, "settings.json"), "utf8")
+      .then((value) => JSON.parse(value) as { webdavsync?: Record<string, unknown> })
+      .catch((error: NodeJS.ErrnoException) => {
+        if (error.code === "ENOENT") return {} as { webdavsync?: Record<string, unknown> };
+        throw error;
+      });
+    const preferences = settings.webdavsync;
+    if (preferences !== undefined && (!preferences || typeof preferences !== "object" || Array.isArray(preferences))) {
+      throw new Error("settings.json webdavsync must be an object");
+    }
+    const config = JSON.parse(raw);
+    for (const key of ["installMissingPackages", "extraSyncFiles", "extraSyncDirs", "excludeSyncPaths", "excludeMcpServers", "remoteDefaultModel"] as const) {
+      if (preferences && key in preferences) config[key] = preferences[key];
+    }
+    return validateConfig(config);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
     throw error;
@@ -57,8 +71,21 @@ export async function readConfig(agentDir = getAgentDir()): Promise<WebdavSyncCo
 
 export async function writeConfig(config: WebdavSyncConfig, agentDir = getAgentDir()): Promise<void> {
   await fs.mkdir(configDir(agentDir), { recursive: true });
-  await fs.writeFile(configPath(agentDir), `${JSON.stringify(validateConfig(config), null, 2)}\n`, "utf8");
+  await fs.writeFile(configPath(agentDir), `${JSON.stringify(connectionConfig(config), null, 2)}\n`, "utf8");
 }
+
+export const connectionConfig = (value: unknown) => {
+  const config = validateConfig(value);
+  return {
+    backend: config.backend,
+    remoteBaseUrl: config.remoteBaseUrl,
+    username: config.username,
+    passwordEnv: config.passwordEnv,
+    password: config.password,
+    remoteDir: config.remoteDir,
+    backupRetention: config.backupRetention,
+  };
+};
 
 export function validateConfig(value: unknown): WebdavSyncConfig {
   if (!value || typeof value !== "object" || Array.isArray(value)) {

@@ -8,10 +8,10 @@ import {
 import { collectAgentArchive } from "./collector.js";
 import { saveFileModes } from "./file-modes.js";
 import {
-	configDir,
+  connectionConfig,
+  configDir,
 	configPath,
 	readConfig,
-	validateConfig,
 	writeConfig,
 	type WebdavSyncConfig,
 } from "./config.js";
@@ -394,9 +394,7 @@ function templateConfig(): WebdavSyncConfig {
 		username: "your-email@example.com",
 		passwordEnv: "PI_WEBDAV_PASSWORD",
 		remoteDir: "/pi-agent-sync",
-		installMissingPackages: "ask",
 		backupRetention: 5,
-		excludeSyncPaths: [],
 	};
 }
 
@@ -426,12 +424,12 @@ async function fetchRemoteText(url: string): Promise<string> {
 function remoteConfigText(value: unknown): string {
 	if (typeof value === "string") {
 		try {
-			return `${JSON.stringify(validateConfig(JSON.parse(value)), null, 2)}\n`;
+			return `${JSON.stringify(connectionConfig(JSON.parse(value)), null, 2)}\n`;
 		} catch {
 			return value.endsWith("\n") ? value : `${value}\n`;
 		}
 	}
-	return `${JSON.stringify(validateConfig(value), null, 2)}\n`;
+	return `${JSON.stringify(connectionConfig(value), null, 2)}\n`;
 }
 
 async function writeRemoteConfigText(

@@ -56,7 +56,7 @@ Backups and internal state live under hidden local state:
 ~/.pi/agent/.webdav-sync/backups/
 ```
 
-Supported fields include `remoteBaseUrl`, `username`, `passwordEnv`, `password` (less safe fallback), `remoteDir`, `installMissingPackages`, `backupRetention`, `extraSyncFiles`, `extraSyncDirs`, `excludeSyncPaths`, `excludeMcpServers`, and `remoteDefaultModel`. Extra sync and excluded paths are relative to `~/.pi`; use the `agent/` prefix for files inside the agent directory or the `home/` prefix for files directly under `~/`, for example `agent/AGENTS.grok.md` or `home/.pi-lens/config.json`. Paths listed in `excludeSyncPaths` are not uploaded and are preserved locally during pull. MCP servers listed in `excludeMcpServers` are omitted from uploaded `mcp.json`, so other machines will not receive them on pull. `remoteDefaultModel` changes only the uploaded `settings.json` default model and defaults to `antigravity/gemini-3.8-flash`; append a Pi thinking-level suffix such as `:high` to set `modelThinkingLevels` for that model only. The local settings file is unchanged.
+WebDAV connection fields (`remoteBaseUrl`, `username`, `passwordEnv`, `password`, `remoteDir`) and `backupRetention` belong in `settings.webdav.json`. Put `installMissingPackages`, `extraSyncFiles`, `extraSyncDirs`, `excludeSyncPaths`, `excludeMcpServers`, and `remoteDefaultModel` under `webdavsync` in `settings.json`. This field is not uploaded and is preserved on pull. Extra sync and excluded paths are relative to `~/.pi`; use the `agent/` prefix for files inside the agent directory or the `home/` prefix for files directly under `~/`, for example `agent/AGENTS.grok.md` or `home/.pi-lens/config.json`. Paths listed in `excludeSyncPaths` are not uploaded and are preserved locally during pull. MCP servers listed in `excludeMcpServers` are omitted from uploaded `mcp.json`, so other machines will not receive them on pull. `remoteDefaultModel` changes only the uploaded `settings.json` default model and defaults to `antigravity/gemini-3.8-flash`; append a Pi thinking-level suffix such as `:high` to set `modelThinkingLevels` for that model only. The local settings file is unchanged.
 
 ### Jianguoyun / 坚果云 WebDAV example
 
@@ -69,8 +69,15 @@ Create an application password in 坚果云, then write:
   "username": "your-email@example.com",
   "passwordEnv": "PI_WEBDAV_PASSWORD",
   "remoteDir": "/pi-agent-sync",
-  "installMissingPackages": "ask",
   "backupRetention": 5
+}
+```
+
+Add to `~/.pi/agent/settings.json` separately:
+
+```json
+"webdavsync": {
+  "installMissingPackages": "ask"
 }
 ```
 

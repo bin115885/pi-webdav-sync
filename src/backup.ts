@@ -131,6 +131,12 @@ export async function applyArchiveToAgent(
 		config?.excludeSyncPaths,
 		resolvedAgentDir,
 	);
+	const localSettings = await fs.readFile(path.join(resolvedAgentDir, "settings.json"), "utf8")
+		.then((raw) => JSON.parse(raw) as Record<string, unknown>)
+		.catch((error: NodeJS.ErrnoException) => {
+			if (error.code === "ENOENT") return {} as Record<string, unknown>;
+			throw error;
+		});
 	const remoteMcp = archive.entries.get("files/mcp.json");
 	const localMcp = excludedMcpServers.length
 		? await fs
@@ -161,10 +167,13 @@ export async function applyArchiveToAgent(
 				? mergedMcp
 				: archive.entries.get(`files/${file.path}`);
 		if (!bytes) throw new Error(`Archive missing file: ${file.path}`);
+		const content = file.path === "settings.json"
+			? Buffer.from(`${JSON.stringify({ ...JSON.parse(bytes.toString("utf8")), webdavsync: localSettings.webdavsync }, null, 2)}\n`)
+			: bytes;
 		await writeAgentFile(
 			resolvedAgentDir,
 			file.path,
-			bytes,
+			content,
 			file.mode,
 			allowlist,
 		);

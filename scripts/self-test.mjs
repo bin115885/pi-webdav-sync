@@ -72,9 +72,9 @@ try {
 		"init template should be WebDAV config",
 	);
 	assert.equal(
-		initConfig.remoteDefaultModel,
-		"antigravity/gemini-3.8-flash",
-		"init template should default the remote model",
+		Object.hasOwn(initConfig, "remoteDefaultModel"),
+		false,
+		"init template should keep sync preferences out of WebDAV credentials",
 	);
 	assert.equal(
 		validateConfig({ backend: "webdav", remoteDefaultModel: "custom/model" }).remoteDefaultModel,
@@ -208,6 +208,11 @@ try {
 		await fs.readFile(path.join(sourceAgent, "settings.json")),
 		sourceSettingsBefore,
 		"push collection should not modify local settings",
+	);
+	assert.equal(
+		Object.hasOwn(JSON.parse(collected.zipEntries.get("files/settings.json").toString()), "webdavsync"),
+		false,
+		"sync preferences should not enter the remote snapshot",
 	);
 	const zip = createLatestZip(collected.zipEntries, collected.manifest);
 	const zipEntries = listZipEntries(zip.zipBytes);
@@ -580,6 +585,10 @@ try {
 
 	await seedTargetAgent(targetAgent);
 	await writeTestConfig(targetAgent);
+	const targetSettingsPath = path.join(targetAgent, "settings.json");
+	const targetSettings = JSON.parse(await fs.readFile(targetSettingsPath, "utf8"));
+	targetSettings.webdavsync.installMissingPackages = "always";
+	await fs.writeFile(targetSettingsPath, `${JSON.stringify(targetSettings, null, 2)}\n`);
 	let selectedSnapshot;
 	const installedSpecs = [];
 	const pull = await runWebdavSyncCommand(["pull"], {
@@ -684,6 +693,7 @@ try {
 		path.join(targetAgent, "settings.json"),
 		"utf8",
 	);
+	assert.equal(JSON.parse(pulledSettings).webdavsync.installMissingPackages, "always", "pull should preserve local sync preferences");
 	if (process.platform === "darwin") {
 		assert.deepEqual(
 			JSON.parse(pulledSettings).skills,
@@ -893,15 +903,26 @@ async function writeTestConfig(agentDir) {
 				username: "user",
 				passwordEnv: "PI_WEBDAV_TEST_PASSWORD",
 				remoteDir: "/pi",
-				extraSyncFiles: ["agent/AGENTS.grok.md", "home/.pi-lens/config.json"],
-				excludeSyncPaths: ["agent/private/grok2api-keys.json"],
-				excludeMcpServers: ["boss-agent", "xiaohongshu"],
-				remoteDefaultModel: "antigravity/gemini-3.8-flash:high",
 			},
 			null,
 			2,
 		)}\n`,
 	);
+	const settingsPath = path.join(agentDir, "settings.json");
+	const settings = await fs.readFile(settingsPath, "utf8")
+		.then((raw) => JSON.parse(raw))
+		.catch((error) => {
+			if (error.code === "ENOENT") return {};
+			throw error;
+		});
+	settings.webdavsync = {
+		installMissingPackages: "never",
+		extraSyncFiles: ["agent/AGENTS.grok.md", "home/.pi-lens/config.json"],
+		excludeSyncPaths: ["agent/private/grok2api-keys.json"],
+		excludeMcpServers: ["boss-agent", "xiaohongshu"],
+		remoteDefaultModel: "antigravity/gemini-3.8-flash:high",
+	};
+	await fs.writeFile(settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
 }
 
 async function seedTargetAgent(agentDir) {
