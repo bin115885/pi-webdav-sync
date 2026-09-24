@@ -49,6 +49,7 @@ const LOCAL_ONLY_SETTINGS_KEYS = [
 	"npmCommand",
 	"sessionDir",
 ] as const;
+const THINKING_LEVEL_SUFFIX = /:(off|minimal|low|medium|high|xhigh|max)$/;
 
 export async function rewriteSettingsFile(
 	agentDir: string,
@@ -83,9 +84,7 @@ export async function rewriteSettingsFile(
 	for (const key of LOCAL_ONLY_SETTINGS_KEYS) delete root[key];
 
 	if (remoteDefaultModel) {
-		const thinkingLevel = remoteDefaultModel.match(
-			/:(off|minimal|low|medium|high|xhigh|max)$/
-		)?.[1];
+		const thinkingLevel = remoteDefaultModel.match(THINKING_LEVEL_SUFFIX)?.[1];
 		const modelRef = thinkingLevel
 			? remoteDefaultModel.slice(0, -(thinkingLevel.length + 1))
 			: remoteDefaultModel;
@@ -100,6 +99,14 @@ export async function rewriteSettingsFile(
 				: {};
 			levels[`${root.defaultProvider}/${root.defaultModel}`] = thinkingLevel;
 			root.modelThinkingLevels = levels;
+			if (Array.isArray(root.enabledModels)) {
+				const defaultRef = `${root.defaultProvider}/${root.defaultModel}`;
+				root.enabledModels = root.enabledModels.map((entry) =>
+					typeof entry === "string"
+						? retargetEnabledModel(entry, defaultRef, thinkingLevel)
+						: entry,
+				);
+			}
 		}
 	}
 	if (Array.isArray(root.packages)) {
@@ -126,6 +133,18 @@ export async function rewriteSettingsFile(
 		warnings: ctx.warnings,
 		rewritten: content.compare(raw) !== 0,
 	};
+}
+
+// enabledModels 的 :level 后缀优先级高于 modelThinkingLevels，不同步改写会盖掉 remoteDefaultModel 的思考等级
+function retargetEnabledModel(
+	entry: string,
+	defaultRef: string,
+	thinkingLevel: string,
+): string {
+	const modelId = defaultRef.slice(defaultRef.indexOf("/") + 1);
+	const body = entry.replace(THINKING_LEVEL_SUFFIX, "");
+	if (body === defaultRef || body === modelId) return `${body}:${thinkingLevel}`;
+	return entry;
 }
 
 function rewritePackageEntry(entry: unknown, ctx: RewriteContext): unknown {

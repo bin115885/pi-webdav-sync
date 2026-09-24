@@ -383,6 +383,10 @@ try {
 	assert.equal(syncedSettings.defaultModel, "gemini-3.8-flash");
 	assert.equal(syncedSettings.defaultThinkingLevel, undefined);
 	assert.equal(syncedSettings.modelThinkingLevels["antigravity/gemini-3.8-flash"], "high");
+	assert.deepEqual(syncedSettings.enabledModels, [
+		"cline-pass/cline-pass/deepseek-v4.1-flash:high",
+		"other/model:low",
+	]);
 	const maxSettings = JSON.parse((await rewriteSettingsFile(
 		sourceAgent,
 		path.join(sourceAgent, "settings.json"),
@@ -392,6 +396,10 @@ try {
 	assert.equal(maxSettings.defaultProvider, "cline-pass");
 	assert.equal(maxSettings.defaultModel, "cline-pass/deepseek-v4.1-flash");
 	assert.equal(maxSettings.modelThinkingLevels["cline-pass/cline-pass/deepseek-v4.1-flash"], "max");
+	assert.deepEqual(maxSettings.enabledModels, [
+		"cline-pass/cline-pass/deepseek-v4.1-flash:max",
+		"other/model:low",
+	]);
 	const remoteSkillPath = JSON.parse(rewrittenSettings).skills[0].replace(
 		/^\.\//,
 		"",
@@ -859,6 +867,10 @@ async function seedSourceAgent(agentDir, externalDir) {
 			{
 				defaultProvider: "local",
 				defaultModel: "local-model",
+				enabledModels: [
+					"cline-pass/cline-pass/deepseek-v4.1-flash:high",
+					"other/model:low",
+				],
 				packages: [
 					"npm:pi-web-access",
 					"pi-skills",
