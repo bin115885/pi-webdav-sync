@@ -17,7 +17,7 @@ import {
 } from "./config.js";
 import { createLatestIndex, type LatestIndex, shortHash } from "./manifest.js";
 import { createSyncAllowlist, getAgentDir } from "./paths.js";
-import { missingInstallSpecs } from "./package-specs.js";
+import { latestInstallSpec, missingInstallSpecs } from "./package-specs.js";
 import {
 	createLatestZip,
 	parseArchive,
@@ -203,14 +203,9 @@ async function commandPull(
 			? prepareMacPullArchive(archive, settings)
 			: archive;
 	const applied = await applyArchiveToAgent(agentDir, archiveToApply);
-	const shouldInstall = await shouldInstallPackages(
-		packages,
-		config,
-		context.confirmInstallPackages,
-	);
-	const installResults = shouldInstall
+	const installResults = packages.length
 		? await installPackages(
-				packages,
+				packages.map(latestInstallSpec),
 				context.installPackage,
 				context.onInstallProgress,
 			)
@@ -366,17 +361,6 @@ const prepareMacPullArchive = (
 		},
 	};
 };
-
-async function shouldInstallPackages(
-	specs: string[],
-	config: WebdavSyncConfig,
-	confirmInstallPackages?: (specs: string[]) => Promise<boolean>,
-): Promise<boolean> {
-	if (!specs.length) return false;
-	if (config.installMissingPackages === "always") return true;
-	if (config.installMissingPackages === "never") return false;
-	return confirmInstallPackages ? confirmInstallPackages(specs) : false;
-}
 
 async function installPackages(
 	specs: string[],

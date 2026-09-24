@@ -2,16 +2,10 @@ import {
 	runWebdavSyncCommand,
 	type InstallProgress,
 	type PushPreview,
-	type SnapshotChoice,
 } from "./commands.js";
-
 type CommandUiContext = {
 	ui?: {
 		notify?: (message: string, level?: "info" | "error" | "warning") => unknown;
-		select?: (
-			message: string,
-			choices: string[],
-		) => Promise<string | undefined>;
 		confirm?: (title: string, message: string) => Promise<boolean>;
 		setStatus?: (key: string, text: string | undefined) => void;
 	};
@@ -69,26 +63,6 @@ function register(
 										`Config already exists:\n${path}\n\nOverwrite it with the template?`,
 									) ?? false
 							: undefined,
-					selectSnapshot: ctx?.ui?.select
-						? async (choices: SnapshotChoice[]) => {
-								const labels = choices.map((choice) => choice.label);
-								const selected = await ctx.ui?.select?.(
-									"Select WebDAV snapshot:",
-									labels,
-								);
-								return choices.find((choice) => choice.label === selected)?.id;
-							}
-						: undefined,
-					confirmInstallPackages: ctx?.ui?.confirm
-						? async (specs: string[]) =>
-								ctx.ui?.confirm?.(
-									"Install missing Pi packages?",
-									[
-										`Pull found ${specs.length} package(s) in the snapshot:`,
-										...specs,
-									].join("\n"),
-								) ?? false
-						: undefined,
 					onInstallProgress: (progress) =>
 						setStatus(formatInstallProgress(progress)),
 				});

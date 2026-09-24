@@ -13,7 +13,7 @@ const { rewriteSettingsFile } = await import(distUrl("settings-rewriter.js"));
 const { isExcludedRelativePath } = await import(distUrl("paths.js"));
 const { saveFileModes } = await import(distUrl("file-modes.js"));
 const { createManifest } = await import(distUrl("manifest.js"));
-const { isRemotePackageSpec } = await import(distUrl("package-specs.js"));
+const { isRemotePackageSpec, latestInstallSpec } = await import(distUrl("package-specs.js"));
 const { createLatestZip, listZipEntries, parseArchive } = await import(
 	distUrl("zip-store.js")
 );
@@ -215,6 +215,9 @@ try {
 		isRemotePackageSpec("pi-skills"),
 		"bare package names should be remote package specs",
 	);
+	assert.equal(latestInstallSpec("npm:@scope/tool@1.2.3"), "npm:@scope/tool");
+	assert.equal(latestInstallSpec("git:github.com/org/tool@v1"), "git:github.com/org/tool");
+	assert.equal(latestInstallSpec("pi-skills@2.0.0"), "pi-skills");
 	assert(
 		isRemotePackageSpec("@org/pkg"),
 		"scoped package names should be remote package specs",
@@ -578,7 +581,6 @@ try {
 	await seedTargetAgent(targetAgent);
 	await writeTestConfig(targetAgent);
 	let selectedSnapshot;
-	let askedToInstall;
 	const installedSpecs = [];
 	const pull = await runWebdavSyncCommand(["pull"], {
 		agentDir: targetAgent,
@@ -587,9 +589,8 @@ try {
 			selectedSnapshot = choices[1]?.id;
 			return selectedSnapshot;
 		},
-		confirmInstallPackages: async (specs) => {
-			askedToInstall = specs;
-			return true;
+		confirmInstallPackages: async () => {
+			throw new Error("pull should not request installation confirmation");
 		},
 		installPackage: async (spec) => {
 			installedSpecs.push(spec);
@@ -612,14 +613,9 @@ try {
 		"pull should expose snapshot choices",
 	);
 	assert.deepEqual(
-		askedToInstall,
-		["npm:pi-web-access", "pi-skills"],
-		"ask mode should prompt for snapshot packages",
-	);
-	assert.deepEqual(
 		installedSpecs,
 		["npm:pi-web-access", "pi-skills"],
-		"ask mode should install packages when confirmed",
+		"pull should install snapshot packages without confirmation",
 	);
 	assert.equal(
 		await fs.readFile(path.join(targetAgent, "AGENTS.md"), "utf8"),
