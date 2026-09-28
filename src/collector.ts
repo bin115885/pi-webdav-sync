@@ -81,16 +81,6 @@ export async function collectAgentArchive(
 		if (await exists(absolutePath)) {
 			if (fileName === "settings.json") {
 				await addRewrittenSettings(state, absolutePath);
-			} else if (fileName === "mcp.json") {
-				await addAllowlistFile(
-					state,
-					absolutePath,
-					fileName,
-					filterMcpConfigForSync(
-						await fs.readFile(absolutePath),
-						state.excludeMcpServers,
-					),
-				);
 			} else {
 				await addAllowlistFile(state, absolutePath, fileName);
 			}
@@ -225,11 +215,14 @@ async function addAllowlistFile(
 	if (!stat.isFile() || isExcludedRelativePath(relativePath, false)) return;
 	const safeRel = safeRelativePath(relativePath);
 	const bytes = content ?? await fs.readFile(absolutePath);
-	addZipEntry(state, `files/${safeRel}`, bytes);
+	const syncedBytes = (safeRel === "mcp.json" || safeRel === "pi/agent/mcp-adapter.json")
+		? filterMcpConfigForSync(bytes, state.excludeMcpServers)
+		: bytes;
+	addZipEntry(state, `files/${safeRel}`, syncedBytes);
 	state.manifestFiles.push(
 		fileEntry(
 			safeRel,
-			bytes,
+			syncedBytes,
 			selectFileMode(
 				stat.mode,
 				state.preservedModes.get(safeRel),

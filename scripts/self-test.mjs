@@ -266,6 +266,9 @@ try {
 		["context7"],
 		"excluded MCP servers should not enter the archive",
 	);
+	const syncedAdapter = JSON.parse(collected.zipEntries.get("files/pi/agent/mcp-adapter.json").toString("utf8"));
+	assert.deepEqual(Object.keys(syncedAdapter.mcpServers), ["context7"],
+		"excluded MCP adapter servers should not enter the archive");
 	assert(
 		manifestPaths.includes("skills/good/skill.md"),
 		"allowlist directory file should enter manifest",
@@ -614,6 +617,12 @@ try {
 		},
 		"pull should preserve local excluded MCP servers",
 	);
+	const pulledAdapter = JSON.parse(await fs.readFile(path.join(targetAgent, "mcp-adapter.json"), "utf8"));
+	assert.deepEqual(pulledAdapter.mcpServers, {
+		context7: { command: "npx" },
+		"boss-agent": { command: "local-boss" },
+		xiaohongshu: { url: "http://localhost:28060/mcp" },
+	}, "pull should preserve local excluded MCP adapter servers");
 	assert(
 		selectedSnapshot?.startsWith("20"),
 		"pull should expose snapshot choices",
@@ -811,6 +820,10 @@ async function seedSourceAgent(agentDir, externalDir) {
 		`${JSON.stringify({ mcpServers: { context7: { command: "npx" }, "boss-agent": { command: "boss-mcp" }, xiaohongshu: { url: "http://localhost:18060/mcp" } } }, null, 2)}\n`,
 	);
 	await fs.writeFile(
+		path.join(agentDir, "mcp-adapter.json"),
+		`${JSON.stringify({ mcpServers: { context7: { command: "npx" }, "boss-agent": { command: "remote-boss" }, xiaohongshu: { url: "http://localhost:18060/mcp" } } }, null, 2)}\n`,
+	);
+	await fs.writeFile(
 		path.join(agentDir, "skills", "good", "skill.md"),
 		"skill\n",
 	);
@@ -914,7 +927,7 @@ async function writeTestConfig(agentDir) {
 		});
 	settings.webdavsync = {
 		installMissingPackages: "never",
-		extraSyncFiles: ["agent/AGENTS.grok.md", "home/.pi-lens/config.json"],
+		extraSyncFiles: ["agent/AGENTS.grok.md", "agent/mcp-adapter.json", "home/.pi-lens/config.json"],
 		excludeSyncPaths: ["agent/private/grok2api-keys.json"],
 		excludeMcpServers: ["boss-agent", "xiaohongshu"],
 		remoteDefaultModel: "antigravity/gemini-3.8-flash:high",
@@ -943,6 +956,10 @@ async function seedTargetAgent(agentDir) {
 	);
 	await fs.writeFile(
 		path.join(agentDir, "mcp.json"),
+		`${JSON.stringify({ mcpServers: { "boss-agent": { command: "local-boss" }, xiaohongshu: { url: "http://localhost:28060/mcp" }, localOnly: { command: "local" } } }, null, 2)}\n`,
+	);
+	await fs.writeFile(
+		path.join(agentDir, "mcp-adapter.json"),
 		`${JSON.stringify({ mcpServers: { "boss-agent": { command: "local-boss" }, xiaohongshu: { url: "http://localhost:28060/mcp" }, localOnly: { command: "local" } } }, null, 2)}\n`,
 	);
 	await fs.writeFile(
