@@ -13,7 +13,7 @@ const { rewriteSettingsFile } = await import(distUrl("settings-rewriter.js"));
 const { isExcludedRelativePath } = await import(distUrl("paths.js"));
 const { saveFileModes } = await import(distUrl("file-modes.js"));
 const { createManifest } = await import(distUrl("manifest.js"));
-const { isRemotePackageSpec, latestInstallSpec } = await import(distUrl("package-specs.js"));
+const { isRemotePackageSpec } = await import(distUrl("package-specs.js"));
 const { createLatestZip, listZipEntries, parseArchive } = await import(
 	distUrl("zip-store.js")
 );
@@ -220,9 +220,6 @@ try {
 		isRemotePackageSpec("pi-skills"),
 		"bare package names should be remote package specs",
 	);
-	assert.equal(latestInstallSpec("npm:@scope/tool@1.2.3"), "npm:@scope/tool");
-	assert.equal(latestInstallSpec("git:github.com/org/tool@v1"), "git:github.com/org/tool");
-	assert.equal(latestInstallSpec("pi-skills@2.0.0"), "pi-skills");
 	assert(
 		isRemotePackageSpec("@org/pkg"),
 		"scoped package names should be remote package specs",
@@ -232,7 +229,7 @@ try {
 		"relative paths should not be remote package specs",
 	);
 	assert(
-		collected.manifest.packageSpecs.includes("pi-skills"),
+		collected.manifest.packageSpecs.includes("pi-skills@2.0.0"),
 		"bare package names should enter manifest packageSpecs",
 	);
 	const manifestPaths = collected.manifest.files
@@ -623,8 +620,8 @@ try {
 	);
 	assert.deepEqual(
 		installedSpecs,
-		["npm:pi-web-access", "pi-skills"],
-		"pull should install snapshot packages without confirmation",
+		["npm:pi-web-access@1.2.3", "pi-skills@2.0.0"],
+		"pull should install snapshot package versions without confirmation",
 	);
 	assert.equal(
 		await fs.readFile(path.join(targetAgent, "AGENTS.md"), "utf8"),
@@ -878,8 +875,8 @@ async function seedSourceAgent(agentDir, externalDir) {
 					"other/model:low",
 				],
 				packages: [
-					"npm:pi-web-access",
-					"pi-skills",
+					"npm:pi-web-access@1.2.3",
+					"pi-skills@2.0.0",
 					{ source: externalDir, extensions: ["x"] },
 				],
 				skills: [path.join(externalDir, "src")],

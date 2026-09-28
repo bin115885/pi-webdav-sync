@@ -99,6 +99,3 @@ export function clonePackageEntryWithSource(
 export function missingInstallSpecs(settings: unknown): string[] {
 	return extractPackageSpecs(settings);
 }
-
-export const latestInstallSpec = (spec: string): string =>
-	spec.replace(/@[^/@]+$/, "");

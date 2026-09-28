@@ -17,7 +17,7 @@ import {
 } from "./config.js";
 import { createLatestIndex, type LatestIndex, shortHash } from "./manifest.js";
 import { createSyncAllowlist, getAgentDir } from "./paths.js";
-import { latestInstallSpec, missingInstallSpecs } from "./package-specs.js";
+import { missingInstallSpecs } from "./package-specs.js";
 import {
 	createLatestZip,
 	parseArchive,
@@ -205,7 +205,7 @@ async function commandPull(
 	const applied = await applyArchiveToAgent(agentDir, archiveToApply);
 	const installResults = packages.length
 		? await installPackages(
-				packages.map(latestInstallSpec),
+				packages,
 				context.installPackage,
 				context.onInstallProgress,
 			)
