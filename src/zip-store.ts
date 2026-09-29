@@ -71,9 +71,17 @@ export function parseArchive(
 	}
 	const manifestBytes = entries.get("manifest.json");
 	if (!manifestBytes) throw new Error("Zip is missing manifest.json");
+	const remote = entries.get("files/settings.json");
+	const preferences = remote ? (JSON.parse(remote.toString("utf8")) as { webdavsync?: { extraSyncFiles?: string[]; extraSyncDirs?: string[] } }).webdavsync : undefined;
+	const synced = createSyncAllowlist(preferences?.extraSyncFiles, preferences?.extraSyncDirs);
 	const manifest = validateManifest(
 		JSON.parse(manifestBytes.toString("utf8")),
-		allowlist,
+		{
+			files: [...allowlist.files, ...synced.files],
+			dirs: [...allowlist.dirs, ...synced.dirs],
+			legacyFiles: [...allowlist.legacyFiles, ...synced.legacyFiles],
+			legacyDirs: [...allowlist.legacyDirs, ...synced.legacyDirs],
+		},
 	);
 	validateArchiveEntries(entries, manifest);
 	const files = manifest.files.filter(

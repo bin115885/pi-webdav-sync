@@ -209,10 +209,10 @@ try {
 		sourceSettingsBefore,
 		"push collection should not modify local settings",
 	);
-	assert.equal(
-		Object.hasOwn(JSON.parse(collected.zipEntries.get("files/settings.json").toString()), "webdavsync"),
-		false,
-		"sync preferences should not enter the remote snapshot",
+	assert.deepEqual(
+		JSON.parse(collected.zipEntries.get("files/settings.json").toString()).webdavsync,
+		JSON.parse(sourceSettingsBefore.toString()).webdavsync,
+		"push should include all sync preferences",
 	);
 	const zip = createLatestZip(collected.zipEntries, collected.manifest);
 	const zipEntries = listZipEntries(zip.zipBytes);
@@ -588,6 +588,9 @@ try {
 	const targetSettingsPath = path.join(targetAgent, "settings.json");
 	const targetSettings = JSON.parse(await fs.readFile(targetSettingsPath, "utf8"));
 	targetSettings.webdavsync.installMissingPackages = "always";
+	targetSettings.webdavsync.extraSyncFiles = targetSettings.webdavsync.extraSyncFiles.filter((file) => file !== "agent/mcp-adapter.json");
+	targetSettings.webdavsync.excludeSyncPaths = [];
+	targetSettings.webdavsync.excludeMcpServers = [];
 	await fs.writeFile(targetSettingsPath, `${JSON.stringify(targetSettings, null, 2)}\n`);
 	let selectedSnapshot;
 	const installedSpecs = [];
@@ -669,7 +672,7 @@ try {
 	assert.equal(
 		await fs.readFile(path.join(targetAgent, "private", "grok2api-keys.json"), "utf8"),
 		'{"local":true}\n',
-		"pull should preserve configured excluded files",
+		"pull should preserve files excluded by incoming preferences",
 	);
 	assert.equal(
 		await exists(path.join(targetAgent, "old-only.txt")),
@@ -690,7 +693,7 @@ try {
 		path.join(targetAgent, "settings.json"),
 		"utf8",
 	);
-	assert.equal(JSON.parse(pulledSettings).webdavsync.installMissingPackages, "always", "pull should preserve local sync preferences");
+	assert.deepEqual(JSON.parse(pulledSettings).webdavsync, JSON.parse(sourceSettingsBefore.toString()).webdavsync, "pull should replace local sync preferences with remote preferences");
 	if (process.platform === "darwin") {
 		assert.deepEqual(
 			JSON.parse(pulledSettings).skills,

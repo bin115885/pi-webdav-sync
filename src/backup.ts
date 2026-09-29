@@ -121,22 +121,24 @@ export async function applyArchiveToAgent(
 ): Promise<ApplySummary> {
 	const resolvedAgentDir = path.resolve(agentDir);
 	const config = await readConfig(resolvedAgentDir);
-	const excludedMcpServers = config?.excludeMcpServers || [];
+	const remoteBytes = archive.entries.get("files/settings.json");
+	const remoteSettings = remoteBytes ? JSON.parse(remoteBytes.toString("utf8")) as { webdavsync?: { extraSyncFiles?: string[]; extraSyncDirs?: string[]; excludeSyncPaths?: string[]; excludeMcpServers?: string[] } } : undefined;
+	const localSettings = await fs.readFile(path.join(resolvedAgentDir, "settings.json"), "utf8")
+		.then((raw) => JSON.parse(raw) as { webdavsync?: unknown })
+		.catch((error: NodeJS.ErrnoException) => {
+			if (error.code === "ENOENT") return {} as { webdavsync?: unknown };
+			throw error;
+		});
+	const excludedMcpServers = [...new Set([...(config?.excludeMcpServers || []), ...(remoteSettings?.webdavsync?.excludeMcpServers || [])])];
 	const allowlist = createSyncAllowlist(
-		config?.extraSyncFiles,
-		config?.extraSyncDirs,
+		[...(config?.extraSyncFiles || []), ...(remoteSettings?.webdavsync?.extraSyncFiles || [])],
+		[...(config?.extraSyncDirs || []), ...(remoteSettings?.webdavsync?.extraSyncDirs || [])],
 		resolvedAgentDir,
 	);
 	const excludeSyncPaths = createSyncExclusions(
-		config?.excludeSyncPaths,
+		[...(config?.excludeSyncPaths || []), ...(remoteSettings?.webdavsync?.excludeSyncPaths || [])],
 		resolvedAgentDir,
 	);
-	const localSettings = await fs.readFile(path.join(resolvedAgentDir, "settings.json"), "utf8")
-		.then((raw) => JSON.parse(raw) as Record<string, unknown>)
-		.catch((error: NodeJS.ErrnoException) => {
-			if (error.code === "ENOENT") return {} as Record<string, unknown>;
-			throw error;
-		});
 	const mergedMcp = new Map<string, Buffer>();
 	for (const filePath of ["mcp.json", "pi/agent/mcp-adapter.json"]) {
 		const remote = archive.entries.get(`files/${filePath}`);
@@ -162,8 +164,8 @@ export async function applyArchiveToAgent(
 		) continue;
 		const bytes = mergedMcp.get(file.path) ?? archive.entries.get(`files/${file.path}`);
 		if (!bytes) throw new Error(`Archive missing file: ${file.path}`);
-		const content = file.path === "settings.json"
-			? Buffer.from(`${JSON.stringify({ ...JSON.parse(bytes.toString("utf8")), webdavsync: localSettings.webdavsync }, null, 2)}\n`)
+		const content = file.path === "settings.json" && !remoteSettings?.webdavsync
+			? Buffer.from(`${JSON.stringify({ ...remoteSettings, webdavsync: localSettings.webdavsync }, null, 2)}\n`)
 			: bytes;
 		await writeAgentFile(
 			resolvedAgentDir,

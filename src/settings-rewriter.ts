@@ -45,7 +45,6 @@ type RewriteContext = {
 
 const RESOURCE_KEYS = ["extensions", "skills", "prompts", "themes"] as const;
 const LOCAL_ONLY_SETTINGS_KEYS = [
-	"webdavsync",
 	"shellPath",
 	"npmCommand",
 	"sessionDir",
