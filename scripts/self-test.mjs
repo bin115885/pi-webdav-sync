@@ -653,26 +653,17 @@ try {
 		'{"source":"test"}\n',
 		"pull should restore Pi Lens config",
 	);
+	assert.equal(
+		await fs.readFile(path.join(targetAgent, "skills", "good", "skill.md"), "utf8"),
+		"skill\n",
+		"pull should restore agent skill",
+	);
 	if (process.platform === "darwin") {
-		assert.equal(
-			await exists(path.join(targetAgent, "skills", "good", "skill.md")),
-			false,
-			"macOS pull should skip agent skills",
-		);
 		assert.equal(
 			(await fs.stat(path.join(targetAgent, "scripts", "pi-idea"))).mode &
 				0o777,
 			0o751,
 			"pull should restore manifest file modes",
-		);
-	} else {
-		assert.equal(
-			await fs.readFile(
-				path.join(targetAgent, "skills", "good", "skill.md"),
-				"utf8",
-			),
-			"skill\n",
-			"pull should restore skill",
 		);
 	}
 	assert.equal(

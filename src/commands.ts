@@ -352,9 +352,6 @@ const prepareMacPullArchive = (
 		entries,
 		manifest: {
 			...archive.manifest,
-			files: archive.manifest.files.filter(
-				(file) => file.path !== "skills" && !file.path.startsWith("skills/"),
-			),
 			externalResources: archive.manifest.externalResources.filter(
 				(resource) => !skillResourceIds.has(resource.id),
 			),
