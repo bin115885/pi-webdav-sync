@@ -583,6 +583,38 @@ try {
 		1,
 	);
 
+	const originalDisableHttpProxy = process.env.disabledPiHttpProxy;
+	try {
+		process.env.disabledPiHttpProxy = "1";
+		const proxyPush = await runWebdavSyncCommand(["push"], { agentDir: sourceAgent, backend });
+		assert.equal(proxyPush.ok, true, proxyPush.text);
+		const remoteArchive = parseArchive(await backend.getBytes("latest.zip"));
+		assert.equal(JSON.parse(remoteArchive.entries.get("files/settings.json").toString("utf8")).httpProxy,
+			"http://127.0.0.1:7890", "禁用标记不应改变上传副本");
+		for (const value of [undefined, "0", "1"]) {
+			if (value === undefined) delete process.env.disabledPiHttpProxy;
+			else process.env.disabledPiHttpProxy = value;
+			const proxyAgent = path.join(tempRoot, `proxy-${value}`, ".pi", "agent");
+			await seedTargetAgent(proxyAgent);
+			await writeTestConfig(proxyAgent);
+			const localPath = path.join(proxyAgent, "settings.json");
+			const localSettings = JSON.parse(await fs.readFile(localPath, "utf8"));
+			localSettings.httpProxy = "http://127.0.0.1:8080";
+			await fs.writeFile(localPath, JSON.stringify(localSettings));
+			const result = await runWebdavSyncCommand(["pull"], { agentDir: proxyAgent, backend, installPackage: async () => 0 });
+			assert.equal(result.ok, true, result.text);
+			const settings = JSON.parse(await fs.readFile(path.join(proxyAgent, "settings.json"), "utf8"));
+			assert.equal(Object.hasOwn(settings, "httpProxy"), value !== "1", `代理移除条件：${value}`);
+			assert.equal(settings.defaultProvider, "antigravity", "不应改变其他设置");
+			const { archive: backup } = await loadBackup(proxyAgent, "latest");
+			assert.equal(JSON.parse(backup.entries.get("files/settings.json").toString("utf8")).httpProxy,
+				localSettings.httpProxy, "本地备份应保留拉取前的代理");
+		}
+	} finally {
+		if (originalDisableHttpProxy === undefined) delete process.env.disabledPiHttpProxy;
+		else process.env.disabledPiHttpProxy = originalDisableHttpProxy;
+	}
+
 	await seedTargetAgent(targetAgent);
 	await writeTestConfig(targetAgent);
 	const targetSettingsPath = path.join(targetAgent, "settings.json");
@@ -875,6 +907,7 @@ async function seedSourceAgent(agentDir, externalDir) {
 		path.join(agentDir, "settings.json"),
 		`${JSON.stringify(
 			{
+				httpProxy: "http://127.0.0.1:7890",
 				defaultProvider: "local",
 				defaultModel: "local-model",
 				enabledModels: [

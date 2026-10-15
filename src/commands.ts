@@ -198,10 +198,7 @@ async function commandPull(
 	const packages = missingInstallSpecs(settings);
 	if (process.platform === "win32") await saveFileModes(agentDir, archive.manifest);
 	const backup = await createLocalBackup(agentDir, config.backupRetention ?? 5);
-	const archiveToApply =
-		process.platform === "darwin"
-			? prepareMacPullArchive(archive, settings)
-			: archive;
+	const archiveToApply = preparePullArchive(archive, settings);
 	const applied = await applyArchiveToAgent(agentDir, archiveToApply);
 	const installResults = packages.length
 		? await installPackages(
@@ -324,26 +321,31 @@ async function settingsJsonFromArchive(
 	return JSON.parse(bytes.toString("utf8"));
 }
 
-const prepareMacPullArchive = (
+const preparePullArchive = (
 	archive: ParsedArchive,
 	settings: unknown,
 ): ParsedArchive => {
 	if (!settings || typeof settings !== "object" || Array.isArray(settings))
 		return archive;
-	const root = settings as Record<string, unknown>;
+	const isMac = process.platform === "darwin";
+	const disableHttpProxy = process.env.disabledPiHttpProxy === "1";
+	if (!isMac && !disableHttpProxy) return archive;
+	const root = { ...(settings as Record<string, unknown>) };
+	if (disableHttpProxy) delete root.httpProxy;
 	const skillResourceIds = new Set<string>();
-	if (Array.isArray(root.skills)) {
+	if (isMac && Array.isArray(root.skills)) {
 		for (const entry of root.skills) {
 			if (typeof entry !== "string") continue;
 			const id = entry.match(/external-resources\/([^/]+)/)?.[1];
 			if (id) skillResourceIds.add(id);
 		}
 	}
+	if (isMac) root.skills = ["~/.cc-switch/skills"];
 	const entries = new Map(archive.entries);
 	entries.set(
 		"files/settings.json",
 		Buffer.from(
-			`${JSON.stringify({ ...root, skills: ["~/.cc-switch/skills"] }, null, 2)}\n`,
+			`${JSON.stringify(root, null, 2)}\n`,
 			"utf8",
 		),
 	);

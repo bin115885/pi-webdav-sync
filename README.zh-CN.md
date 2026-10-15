@@ -88,6 +88,8 @@ WebDAV 连接信息（`remoteBaseUrl`、`username`、`passwordEnv`、`password`�
 - `/webdav-sync:push` - 显示摘要并询问确认，然后上传 `latest.zip`、`latest.json` 和一个时间戳快照。取消后不会上传任何内容。
 - `/webdav-sync:pull` - 选择远程快照，备份本地状态，应用远程配置，并可选择安装快照中的 package specs。
 
+当 Pi 进程的环境变量 `disabledPiHttpProxy=1` 时，`pull` 会在写入本机 `settings.json` 前移除顶层 `httpProxy`。未设置或为其他值时保留远程代理配置；此规则不修改上传副本和拉取前的本地备份。
+
 当 `installMissingPackages` 为：
 
 - `ask` - 安装前询问，并在 footer 显示进度。
