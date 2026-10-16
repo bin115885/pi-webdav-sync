@@ -327,20 +327,17 @@ const preparePullArchive = (
 ): ParsedArchive => {
 	if (!settings || typeof settings !== "object" || Array.isArray(settings))
 		return archive;
-	const isMac = process.platform === "darwin";
-	const disableHttpProxy = process.env.disabledPiHttpProxy === "1";
-	if (!isMac && !disableHttpProxy) return archive;
 	const root = { ...(settings as Record<string, unknown>) };
-	if (disableHttpProxy) delete root.httpProxy;
+	if (process.env.disabledPiHttpProxy === "1") delete root.httpProxy;
 	const skillResourceIds = new Set<string>();
-	if (isMac && Array.isArray(root.skills)) {
+	if (Array.isArray(root.skills)) {
 		for (const entry of root.skills) {
 			if (typeof entry !== "string") continue;
 			const id = entry.match(/external-resources\/([^/]+)/)?.[1];
 			if (id) skillResourceIds.add(id);
 		}
 	}
-	if (isMac) root.skills = ["~/.cc-switch/skills"];
+	root.skills = process.env.externalSkillPath ? [process.env.externalSkillPath] : [];
 	const entries = new Map(archive.entries);
 	entries.set(
 		"files/settings.json",

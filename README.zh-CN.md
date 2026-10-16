@@ -122,9 +122,11 @@ WebDAV 连接信息（`remoteBaseUrl`、`username`、`passwordEnv`、`password`�
 
 ## settings 外部路径重写
 
-`settings.json` 会解析 package 以及顶层 `extensions`、`skills`、`prompts`、`themes` 引用。以 `npm:`、`git:`、`http://`、`https://`、`ssh://` 或 `git://` 开头的 package specs 会保留为安装 specs。agent 目录外的本地路径会被复制到 zip 的 `external-resources/<stable-id>/...`，并把 settings 里的值重写为 `./external-resources/<stable-id>/<basename>`，同时保留 `!`、`+`、`-` 前缀。
+`settings.json` 会解析 package 以及顶层 `extensions`、`prompts`、`themes` 引用。以 `npm:`、`git:`、`http://`、`https://`、`ssh://` 或 `git://` 开头的 package specs 会保留为安装 specs。agent 目录外的本地路径会被复制到 zip 的 `external-resources/<stable-id>/...`，并把 settings 里的值重写为 `./external-resources/<stable-id>/<basename>`，同时保留 `!`、`+`、`-` 前缀。
 
 `pull` 会把外部资源恢复到 `~/.pi/agent/external-resources/...`，因此重写后的相对路径仍然有效。
+
+Skill 仅同步 `~/.pi/agent/skills/`，不收集顶层 `settings.json.skills` 挂载的资源，上传副本中的 `skills` 为 `[]`。所有平台拉取时均忽略云端 Skill 挂载及旧快照对应的外部 Skill 资源；仅当 Pi 进程的环境变量 `externalSkillPath` 非空时，将其作为单个路径写入 `settings.json.skills`，否则写入 `[]`。此规则不修改本机外部 Skill 目录，也不影响其他类型的外部资源和 package 安装。
 
 ## 备份
 

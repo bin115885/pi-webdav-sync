@@ -43,7 +43,7 @@ type RewriteContext = {
 	allowlist: SyncAllowlist;
 };
 
-const RESOURCE_KEYS = ["extensions", "skills", "prompts", "themes"] as const;
+const RESOURCE_KEYS = ["extensions", "prompts", "themes"] as const;
 const LOCAL_ONLY_SETTINGS_KEYS = [
 	"shellPath",
 	"npmCommand",
@@ -82,6 +82,7 @@ export async function rewriteSettingsFile(
 	};
 	const root = { ...(parsed as Record<string, unknown>) };
 	for (const key of LOCAL_ONLY_SETTINGS_KEYS) delete root[key];
+	root.skills = [];
 
 	if (remoteDefaultModel) {
 		const thinkingLevel = remoteDefaultModel.match(THINKING_LEVEL_SUFFIX)?.[1];

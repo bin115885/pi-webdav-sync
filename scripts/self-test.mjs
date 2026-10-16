@@ -12,7 +12,7 @@ const { validateConfig } = await import(distUrl("config.js"));
 const { rewriteSettingsFile } = await import(distUrl("settings-rewriter.js"));
 const { isExcludedRelativePath } = await import(distUrl("paths.js"));
 const { saveFileModes } = await import(distUrl("file-modes.js"));
-const { createManifest } = await import(distUrl("manifest.js"));
+const { createManifest, sha256Bytes } = await import(distUrl("manifest.js"));
 const { isRemotePackageSpec } = await import(distUrl("package-specs.js"));
 const { createLatestZip, listZipEntries, parseArchive } = await import(
 	distUrl("zip-store.js")
@@ -57,8 +57,10 @@ const sourceAgent = path.join(tempRoot, "source-home", ".pi", "agent");
 const targetAgent = path.join(tempRoot, "target-home", ".pi", "agent");
 const initAgent = path.join(tempRoot, "init-pi", "agent");
 const externalDir = path.join(tempRoot, "external package");
+const originalExternalSkillPath = process.env.externalSkillPath;
 
 try {
+	delete process.env.externalSkillPath;
 	assert.equal(isExcludedRelativePath("local-state", true), true, "local state should never be synchronized");
 	const initCreated = await runWebdavSyncCommand(["init"], {
 		agentDir: initAgent,
@@ -363,7 +365,7 @@ try {
 
 	assert.equal(
 		collected.manifest.externalResources.length,
-		2,
+		1,
 		"settings external paths should be copied as external resources",
 	);
 	assert(
@@ -408,10 +410,8 @@ try {
 		"cline-pass/cline-pass/deepseek-v4.1-flash:max",
 		"other/model:low",
 	]);
-	const remoteSkillPath = JSON.parse(rewrittenSettings).skills[0].replace(
-		/^\.\//,
-		"",
-	);
+	assert.deepEqual(syncedSettings.skills, [], "上传副本不应保留额外 Skill 挂载");
+	assert(!zipEntries.some((entry) => entry.endsWith("only-skill.md")), "不得打包额外挂载的 Skill 文件");
 	assert(
 		rewrittenSettings.includes("./external-resources/"),
 		"settings external paths should be rewritten",
@@ -615,6 +615,59 @@ try {
 		else process.env.disabledPiHttpProxy = originalDisableHttpProxy;
 	}
 
+	const legacySkillPath = "external-resources/legacy-skills/skills/only-skill.md";
+	const legacySkillBytes = Buffer.from("旧版外部 Skill\n");
+	const legacySettingsBytes = Buffer.from(JSON.stringify({
+		...syncedSettings,
+		skills: ["./external-resources/legacy-skills/skills"],
+	}));
+	const legacyEntries = new Map(collected.zipEntries);
+	legacyEntries.set("files/settings.json", legacySettingsBytes);
+	legacyEntries.set(legacySkillPath, legacySkillBytes);
+	const legacySkillManifest = createManifest({
+		...collected.manifest,
+		files: collected.manifest.files.map((file) => file.path === "settings.json"
+			? { ...file, size: legacySettingsBytes.length, sha256: sha256Bytes(legacySettingsBytes) }
+			: file),
+		externalResources: [...collected.manifest.externalResources, {
+			id: "legacy-skills",
+			originalPathHash: sha256Bytes(legacySkillBytes),
+			baseName: "skills",
+			files: [{ path: legacySkillPath, type: "file", size: legacySkillBytes.length, sha256: sha256Bytes(legacySkillBytes) }],
+		}],
+	});
+	legacyEntries.set("manifest.json", Buffer.from(JSON.stringify(legacySkillManifest)));
+	const legacySkillZip = createLatestZip(legacyEntries, legacySkillManifest);
+	const legacySkillBackend = new MemoryBackend();
+	await legacySkillBackend.putBytes("latest.zip", legacySkillZip.zipBytes);
+	await legacySkillBackend.putJson("latest.json", legacySkillZip.latest);
+	const originalPlatform = Object.getOwnPropertyDescriptor(process, "platform");
+	try {
+		for (const platform of ["darwin", "win32", "linux"]) {
+			Object.defineProperty(process, "platform", { value: platform });
+			for (const [label, value] of [["unset", undefined], ["empty", ""], ["set", "~/本机 skills"]]) {
+				if (value === undefined) delete process.env.externalSkillPath;
+				else process.env.externalSkillPath = value;
+				const skillAgent = path.join(tempRoot, `skill-${platform}-${label}`, ".pi", "agent");
+				await seedTargetAgent(skillAgent);
+				await writeTestConfig(skillAgent);
+				const result = await runWebdavSyncCommand(["pull"], {
+					agentDir: skillAgent, backend: legacySkillBackend, installPackage: async () => 0,
+				});
+				assert.equal(result.ok, true, result.text);
+				const settings = JSON.parse(await fs.readFile(path.join(skillAgent, "settings.json"), "utf8"));
+				assert.deepEqual(settings.skills, value ? [value] : [], `${platform} 应仅由环境变量决定额外挂载`);
+				assert.equal(await exists(path.join(skillAgent, legacySkillPath)), false, "不得恢复旧快照中的外部 Skill");
+				assert.equal(await fs.readFile(path.join(skillAgent, "skills/good/skill.md"), "utf8"), "skill\n", "默认 Skill 应正常恢复");
+				const reupload = await collectAgentArchive(skillAgent);
+				assert.deepEqual(JSON.parse(reupload.zipEntries.get("files/settings.json")).skills, [], "再次上传不得携带本机挂载");
+			}
+		}
+	} finally {
+		Object.defineProperty(process, "platform", originalPlatform);
+		delete process.env.externalSkillPath;
+	}
+
 	await seedTargetAgent(targetAgent);
 	await writeTestConfig(targetAgent);
 	const targetSettingsPath = path.join(targetAgent, "settings.json");
@@ -726,24 +779,10 @@ try {
 		"utf8",
 	);
 	assert.deepEqual(JSON.parse(pulledSettings).webdavsync, JSON.parse(sourceSettingsBefore.toString()).webdavsync, "pull should replace local sync preferences with remote preferences");
-	if (process.platform === "darwin") {
-		assert.deepEqual(
-			JSON.parse(pulledSettings).skills,
-			["~/.cc-switch/skills"],
-			"macOS pull should keep the cc-switch skills path",
-		);
-		assert.equal(
-			await exists(path.join(targetAgent, remoteSkillPath)),
-			false,
-			"macOS pull should skip remote skills",
-		);
-	} else {
-		const backupAfterPull = await collectAgentArchive(targetAgent);
-		assert(
-			backupAfterPull.manifest.externalResources.length > 0,
-			"backup collection should preserve restored external-resources references",
-		);
-	}
+	assert.deepEqual(JSON.parse(pulledSettings).skills, [], "未配置环境变量时不应挂载额外 Skill");
+	const backupAfterPull = await collectAgentArchive(targetAgent);
+	assert(backupAfterPull.manifest.externalResources.length > 0,
+		"非 Skill 外部资源应继续保留");
 	assert(
 		pulledSettings.includes("./external-resources/"),
 		"pulled settings should reference restored external resources",
@@ -799,6 +838,8 @@ try {
 
 	console.log("self-test passed");
 } finally {
+	if (originalExternalSkillPath === undefined) delete process.env.externalSkillPath;
+	else process.env.externalSkillPath = originalExternalSkillPath;
 	await fs.rm(tempRoot, { recursive: true, force: true });
 }
 
@@ -902,6 +943,8 @@ async function seedSourceAgent(agentDir, externalDir) {
 		"bad\n",
 	);
 	await fs.writeFile(path.join(externalDir, ".git", "config"), "bad\n");
+	await fs.mkdir(`${externalDir}-skills`, { recursive: true });
+	await fs.writeFile(path.join(`${externalDir}-skills`, "only-skill.md"), "不应同步\n");
 
 	await fs.writeFile(
 		path.join(agentDir, "settings.json"),
@@ -919,7 +962,7 @@ async function seedSourceAgent(agentDir, externalDir) {
 					"pi-skills@2.0.0",
 					{ source: externalDir, extensions: ["x"] },
 				],
-				skills: [path.join(externalDir, "src")],
+				skills: [`${externalDir}-skills`],
 				shellPath: "/local/only/shell",
 				npmCommand: ["local-node-manager", "npm"],
 				sessionDir: "/local/only/sessions",

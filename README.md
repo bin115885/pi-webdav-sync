@@ -121,9 +121,11 @@ Always excluded at any depth:
 
 ## Settings external path rewrite
 
-`settings.json` is parsed for package and top-level `extensions`, `skills`, `prompts`, `themes` references. Package specs beginning with `npm:`, `git:`, `http://`, `https://`, `ssh://`, or `git://` are preserved as install specs. Local paths outside the agent directory are copied into zip entries under `external-resources/<stable-id>/...`, and settings values are rewritten to `./external-resources/<stable-id>/<basename>` while preserving `!`, `+`, and `-` prefixes.
+`settings.json` is parsed for package and top-level `extensions`, `prompts`, `themes` references. Package specs beginning with `npm:`, `git:`, `http://`, `https://`, `ssh://`, or `git://` are preserved as install specs. Local paths outside the agent directory are copied into zip entries under `external-resources/<stable-id>/...`, and settings values are rewritten to `./external-resources/<stable-id>/<basename>` while preserving `!`, `+`, and `-` prefixes.
 
 Pull restores external resources to `~/.pi/agent/external-resources/...` so the rewritten relative settings paths remain valid.
+
+Skill 仅同步 `~/.pi/agent/skills/`，不收集顶层 `settings.json.skills` 挂载的资源，上传副本中的 `skills` 为 `[]`。所有平台拉取时均忽略云端 Skill 挂载及旧快照对应的外部 Skill 资源；仅当 Pi 进程的环境变量 `externalSkillPath` 非空时，将其作为单个路径写入 `settings.json.skills`，否则写入 `[]`。本机外部 Skill 目录、其他外部资源和 package 安装不受影响。
 
 ## Backups
 
