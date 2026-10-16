@@ -56,7 +56,7 @@ Backups and internal state live under hidden local state:
 ~/.pi/agent/.webdav-sync/backups/
 ```
 
-WebDAV connection fields (`remoteBaseUrl`, `username`, `passwordEnv`, `password`, `remoteDir`) and `backupRetention` belong in `settings.webdav.json` (never synced). Put `installMissingPackages`, `extraSyncFiles`, `extraSyncDirs`, `excludeSyncPaths`, `excludeMcpServers`, and `remoteDefaultModel` under `webdavsync` in `settings.json`. This field is uploaded with `settings.json` and replaces local preferences on pull (old snapshots without it keep local preferences). Extra sync and excluded paths are relative to `~/.pi`; use the `agent/` prefix for files inside the agent directory or the `home/` prefix for files directly under `~/`, for example `agent/AGENTS.grok.md` or `home/.pi-lens/config.json`. Paths listed in `excludeSyncPaths` are not uploaded and are preserved locally during pull. MCP servers listed in `excludeMcpServers` are omitted from uploaded `mcp.json` and `agent/mcp-adapter.json` (when synced), and their local entries are preserved on pull. `remoteDefaultModel` changes only the uploaded `settings.json` default model and defaults to `antigravity/gemini-3.8-flash`; append a Pi thinking-level suffix such as `:high` to set `modelThinkingLevels` for that model only. The local settings file is unchanged by push.
+WebDAV connection fields (`remoteBaseUrl`, `username`, `passwordEnv`, `password`, `remoteDir`) and `backupRetention` belong in `settings.webdav.json` (never synced). Put `installMissingPackages`, `extraSyncFiles`, `extraSyncDirs`, `excludeSyncPaths`, and `remoteDefaultModel` under `webdavsync` in `settings.json`. This field is uploaded with `settings.json` and replaces local preferences on pull (old snapshots without it keep local preferences). Extra sync and excluded paths are relative to `~/.pi`; use the `agent/` prefix for files inside the agent directory or the `home/` prefix for files directly under `~/`, for example `agent/AGENTS.grok.md` or `home/.pi-lens/config.json`. Paths listed in `excludeSyncPaths` are not uploaded and are preserved locally during pull. `remoteDefaultModel` changes only the uploaded `settings.json` default model and defaults to `antigravity/gemini-3.8-flash`; append a Pi thinking-level suffix such as `:high` to set `modelThinkingLevels` for that model only. The local settings file is unchanged by push.
 
 ### Jianguoyun / 坚果云 WebDAV example
 
@@ -100,6 +100,7 @@ When `installMissingPackages` is:
 Allowlist files:
 
 - `settings.json`, `auth.json`, `models.json`, `AGENTS.md`, `SYSTEM.md`, `APPEND_SYSTEM.md`, `keybindings.json`, `mcp.json`, `zentui.json`
+- `mcp.json` syncs unchanged. Keep device-specific servers in `~/.pi-local/mcp.json`, outside the default sync scope, and load them with a local extension.
 - `~/.pi/web-search.json`
 
 Allowlist directories:

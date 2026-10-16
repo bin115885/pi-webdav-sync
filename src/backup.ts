@@ -2,7 +2,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { collectAgentArchive } from "./collector.js";
 import { readConfig, stateDir } from "./config.js";
-import { preserveExcludedMcpServers } from "./mcp-settings.js";
 import {
 	createSyncAllowlist,
 	createSyncExclusions,
@@ -122,14 +121,13 @@ export async function applyArchiveToAgent(
 	const resolvedAgentDir = path.resolve(agentDir);
 	const config = await readConfig(resolvedAgentDir);
 	const remoteBytes = archive.entries.get("files/settings.json");
-	const remoteSettings = remoteBytes ? JSON.parse(remoteBytes.toString("utf8")) as { webdavsync?: { extraSyncFiles?: string[]; extraSyncDirs?: string[]; excludeSyncPaths?: string[]; excludeMcpServers?: string[] } } : undefined;
+	const remoteSettings = remoteBytes ? JSON.parse(remoteBytes.toString("utf8")) as { webdavsync?: { extraSyncFiles?: string[]; extraSyncDirs?: string[]; excludeSyncPaths?: string[] } } : undefined;
 	const localSettings = await fs.readFile(path.join(resolvedAgentDir, "settings.json"), "utf8")
 		.then((raw) => JSON.parse(raw) as { webdavsync?: unknown })
 		.catch((error: NodeJS.ErrnoException) => {
 			if (error.code === "ENOENT") return {} as { webdavsync?: unknown };
 			throw error;
 		});
-	const excludedMcpServers = [...new Set([...(config?.excludeMcpServers || []), ...(remoteSettings?.webdavsync?.excludeMcpServers || [])])];
 	const allowlist = createSyncAllowlist(
 		[...(config?.extraSyncFiles || []), ...(remoteSettings?.webdavsync?.extraSyncFiles || [])],
 		[...(config?.extraSyncDirs || []), ...(remoteSettings?.webdavsync?.extraSyncDirs || [])],
@@ -139,21 +137,6 @@ export async function applyArchiveToAgent(
 		[...(config?.excludeSyncPaths || []), ...(remoteSettings?.webdavsync?.excludeSyncPaths || [])],
 		resolvedAgentDir,
 	);
-	const mergedMcp = new Map<string, Buffer>();
-	for (const filePath of ["mcp.json", "pi/agent/mcp-adapter.json"]) {
-		const remote = archive.entries.get(`files/${filePath}`);
-		if (!remote) continue;
-		const local = excludedMcpServers.length
-			? await fs.readFile(resolveSyncPath(resolvedAgentDir, filePath))
-				.catch((error: NodeJS.ErrnoException) => {
-					if (error.code === "ENOENT") return undefined;
-					throw error;
-				})
-			: undefined;
-		mergedMcp.set(filePath, local
-			? preserveExcludedMcpServers(remote, local, excludedMcpServers)
-			: remote);
-	}
 	await clearAllowlistedTargets(resolvedAgentDir, allowlist, excludeSyncPaths);
 	let filesWritten = 0;
 	let externalFilesWritten = 0;
@@ -162,7 +145,7 @@ export async function applyArchiveToAgent(
 			isExcludedRelativePath(file.path) ||
 			isSyncPathExcluded(resolvedAgentDir, file.path, excludeSyncPaths)
 		) continue;
-		const bytes = mergedMcp.get(file.path) ?? archive.entries.get(`files/${file.path}`);
+		const bytes = archive.entries.get(`files/${file.path}`);
 		if (!bytes) throw new Error(`Archive missing file: ${file.path}`);
 		const content = file.path === "settings.json" && !remoteSettings?.webdavsync
 			? Buffer.from(`${JSON.stringify({ ...remoteSettings, webdavsync: localSettings.webdavsync }, null, 2)}\n`)

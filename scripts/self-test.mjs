@@ -264,13 +264,14 @@ try {
 	);
 	const syncedMcp = JSON.parse(collected.zipEntries.get("files/mcp.json").toString("utf8"));
 	assert.deepEqual(
-		Object.keys(syncedMcp.mcpServers),
-		["context7"],
-		"excluded MCP servers should not enter the archive",
+		syncedMcp,
+		JSON.parse(await fs.readFile(path.join(sourceAgent, "mcp.json"), "utf8")),
+		"公共 MCP 配置应原样进入归档",
 	);
 	const syncedAdapter = JSON.parse(collected.zipEntries.get("files/pi/agent/mcp-adapter.json").toString("utf8"));
-	assert.deepEqual(Object.keys(syncedAdapter.mcpServers), ["context7"],
-		"excluded MCP adapter servers should not enter the archive");
+	assert.deepEqual(syncedAdapter,
+		JSON.parse(await fs.readFile(path.join(sourceAgent, "mcp-adapter.json"), "utf8")),
+		"MCP adapter 配置应原样进入归档");
 	assert(
 		manifestPaths.includes("skills/good/skill.md"),
 		"allowlist directory file should enter manifest",
@@ -675,7 +676,6 @@ try {
 	targetSettings.webdavsync.installMissingPackages = "always";
 	targetSettings.webdavsync.extraSyncFiles = targetSettings.webdavsync.extraSyncFiles.filter((file) => file !== "agent/mcp-adapter.json");
 	targetSettings.webdavsync.excludeSyncPaths = [];
-	targetSettings.webdavsync.excludeMcpServers = [];
 	await fs.writeFile(targetSettingsPath, `${JSON.stringify(targetSettings, null, 2)}\n`);
 	let selectedSnapshot;
 	const installedSpecs = [];
@@ -698,19 +698,15 @@ try {
 	const pulledMcp = JSON.parse(await fs.readFile(path.join(targetAgent, "mcp.json"), "utf8"));
 	assert.deepEqual(
 		pulledMcp.mcpServers,
-		{
-			context7: { command: "npx" },
-			"boss-agent": { command: "local-boss" },
-			xiaohongshu: { url: "http://localhost:28060/mcp" },
-		},
-		"pull should preserve local excluded MCP servers",
+		syncedMcp.mcpServers,
+		"拉取应使用公共 MCP 配置，不合并本机旧条目",
 	);
 	const pulledAdapter = JSON.parse(await fs.readFile(path.join(targetAgent, "mcp-adapter.json"), "utf8"));
-	assert.deepEqual(pulledAdapter.mcpServers, {
-		context7: { command: "npx" },
-		"boss-agent": { command: "local-boss" },
-		xiaohongshu: { url: "http://localhost:28060/mcp" },
-	}, "pull should preserve local excluded MCP adapter servers");
+	assert.deepEqual(pulledAdapter.mcpServers, syncedAdapter.mcpServers,
+		"拉取应原样恢复 MCP adapter 配置");
+	assert.equal(await fs.readFile(path.join(tempRoot, "target-home", ".pi-local", "mcp.json"), "utf8"),
+		'{"mcpServers":{"device":{"command":"local"}}}\n',
+		"拉取不得改写设备专属 MCP 配置");
 	assert(
 		selectedSnapshot?.startsWith("20"),
 		"pull should expose snapshot choices",
@@ -999,13 +995,15 @@ async function writeTestConfig(agentDir) {
 		installMissingPackages: "never",
 		extraSyncFiles: ["agent/AGENTS.grok.md", "agent/mcp-adapter.json", "home/.pi-lens/config.json"],
 		excludeSyncPaths: ["agent/private/grok2api-keys.json"],
-		excludeMcpServers: ["boss-agent", "xiaohongshu"],
 		remoteDefaultModel: "antigravity/gemini-3.8-flash:high",
 	};
 	await fs.writeFile(settingsPath, `${JSON.stringify(settings, null, 2)}\n`);
 }
 
 async function seedTargetAgent(agentDir) {
+	const localDir = path.join(path.dirname(path.dirname(agentDir)), ".pi-local");
+	await fs.mkdir(localDir, { recursive: true });
+	await fs.writeFile(path.join(localDir, "mcp.json"), '{"mcpServers":{"device":{"command":"local"}}}\n');
 	await fs.mkdir(path.join(path.dirname(path.dirname(agentDir)), ".pi-lens"), { recursive: true });
 	await fs.mkdir(path.join(agentDir, "extensions", "old"), { recursive: true });
 	await fs.mkdir(path.join(agentDir, "private"), { recursive: true });

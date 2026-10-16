@@ -19,7 +19,6 @@ export type WebdavSyncConfig = {
   extraSyncFiles?: string[];
   extraSyncDirs?: string[];
   excludeSyncPaths?: string[];
-  excludeMcpServers?: string[];
   remoteDefaultModel?: string;
 };
 
@@ -59,7 +58,7 @@ export async function readConfig(agentDir = getAgentDir()): Promise<WebdavSyncCo
       throw new Error("settings.json webdavsync must be an object");
     }
     const config = JSON.parse(raw);
-    for (const key of ["installMissingPackages", "extraSyncFiles", "extraSyncDirs", "excludeSyncPaths", "excludeMcpServers", "remoteDefaultModel"] as const) {
+    for (const key of ["installMissingPackages", "extraSyncFiles", "extraSyncDirs", "excludeSyncPaths", "remoteDefaultModel"] as const) {
       if (preferences && key in preferences) config[key] = preferences[key];
     }
     return validateConfig(config);
@@ -109,7 +108,6 @@ export function validateConfig(value: unknown): WebdavSyncConfig {
   config.extraSyncFiles = validateExtraSyncPaths(config.extraSyncFiles, "extraSyncFiles", false);
   config.extraSyncDirs = validateExtraSyncPaths(config.extraSyncDirs, "extraSyncDirs", true);
   config.excludeSyncPaths = validateExtraSyncPaths(config.excludeSyncPaths, "excludeSyncPaths", false);
-  config.excludeMcpServers = validateStringList(config.excludeMcpServers, "excludeMcpServers");
   return config;
 }
 
@@ -127,12 +125,4 @@ function validateExtraSyncPaths(
     throw new Error(`${key} contains an excluded path`);
   }
   return paths;
-}
-
-function validateStringList(value: unknown, key: string): string[] {
-  if (value === undefined) return [];
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || !item.trim())) {
-    throw new Error(`${key} must be an array of non-empty strings`);
-  }
-  return [...new Set(value.map((item) => (item as string).trim()))];
 }

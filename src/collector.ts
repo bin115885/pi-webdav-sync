@@ -20,7 +20,6 @@ import {
 	type SyncManifest,
 } from "./manifest.js";
 import { rewriteSettingsFile } from "./settings-rewriter.js";
-import { filterMcpConfigForSync } from "./mcp-settings.js";
 
 export type CollectedArchive = {
 	agentDir: string;
@@ -45,7 +44,6 @@ type CollectState = {
 	platform: NodeJS.Platform;
 	preservedModes: Map<string, number>;
 	excludeSyncPaths: readonly string[];
-	excludeMcpServers: string[];
 	remoteDefaultModel: string;
 	warnings: string[];
 };
@@ -72,7 +70,6 @@ export async function collectAgentArchive(
 			platform === "win32" ? await loadFileModes(resolvedAgentDir) : new Map(),
 		warnings: [],
 		excludeSyncPaths: createSyncExclusions(config?.excludeSyncPaths, resolvedAgentDir),
-		excludeMcpServers: config?.excludeMcpServers || [],
 		remoteDefaultModel: config?.remoteDefaultModel || DEFAULT_REMOTE_MODEL,
 	};
 
@@ -215,14 +212,11 @@ async function addAllowlistFile(
 	if (!stat.isFile() || isExcludedRelativePath(relativePath, false)) return;
 	const safeRel = safeRelativePath(relativePath);
 	const bytes = content ?? await fs.readFile(absolutePath);
-	const syncedBytes = (safeRel === "mcp.json" || safeRel === "pi/agent/mcp-adapter.json")
-		? filterMcpConfigForSync(bytes, state.excludeMcpServers)
-		: bytes;
-	addZipEntry(state, `files/${safeRel}`, syncedBytes);
+	addZipEntry(state, `files/${safeRel}`, bytes);
 	state.manifestFiles.push(
 		fileEntry(
 			safeRel,
-			syncedBytes,
+			bytes,
 			selectFileMode(
 				stat.mode,
 				state.preservedModes.get(safeRel),
